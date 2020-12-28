@@ -4,7 +4,7 @@ import json, os, sys
 import urllib
 import tempfile
 import requests
-from .Bot import Bot
+from Bot import Bot
 
 
 def doNothing(*arg):
