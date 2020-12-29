@@ -1,1 +1,6 @@
 requests
+jupyter
+jupytext
+pandas
+tensorflow
+matplotlib
