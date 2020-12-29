@@ -21,6 +21,9 @@ import os
 import shutil
 import random
 import re
+import tensorflow as tf
+import numpy as np
+import json
 ```
 
 ```{python}
@@ -44,7 +47,7 @@ max(df["class"])
 ```
 
 ```{python}
-plt.imshow(image.imread(os.path.join(basedir, 'train', '15300.jpg')))
+plt.imshow(image.imread(os.path.join(basedir, 'train', '15309.jpg')))
 ```
 
 ```{python}
@@ -60,78 +63,81 @@ df.iloc[28206]
 ```
 
 ```{python}
-#for current_class in range(0, max(df["class"]), 50):
-for current_class in range(1847, 1900, 1):
-    res = df[df["class"] == current_class]["name"].iloc[0]
-    print(current_class)
-    plt.imshow(image.imread(os.path.join(basedir, 'train', res)))
-    plt.show()
-    
+efb3 = tf.keras.applications.EfficientNetB3(
+    weights="imagenet"
+)
 ```
 
 ```{python}
-df.iloc[image]["name"]
+im = tf.keras.preprocessing.image.load_img(
+    os.path.join(basedir, 'train', '15309.jpg'),
+    target_size=(300, 300, 3)
+)
 ```
 
 ```{python}
-for f in range(15309, 28206):
-    print(df.iloc[f]["name"])
-    plt.imshow(image.imread(os.path.join(basedir, 'train', df.iloc[f]["name"])))
-    plt.show()
+imarr = tf.keras.preprocessing.image.img_to_array(im)
+imarr = np.array([imarr])  # Convert single image to a batch.
 ```
 
 ```{python}
-[15313, 15319, 15330, 15312, 15317, 15353, 15360, 15370, 15372, 15381, 15396, 15404, 15406, 15407, 15414, 15421, 15429, ]
+pred = efb3.predict(imarr)
 ```
 
 ```{python}
-sampled = random.sample(range(15309, 28206), 1000)
+plt.plot(pred[0])
 ```
 
 ```{python}
-sample_dir = os.path.join(basedir, 'sample_train')
-if not os.path.isdir(sample_dir):
-    os.mkdir(sample_dir)
-for i in sampled:
-    iname = f'{i}.jpg'
-    shutil.copyfile(os.path.join(basedir, 'train', iname),
-                   os.path.join(sample_dir, iname))
+predDF = pd.DataFrame(pred[0], columns=["value"])
+predDF
 ```
 
 ```{python}
-filter_list = os.listdir(sample_dir)
+predDF[predDF["value"] > 0.1]
 ```
 
 ```{python}
-filter_list.sort()
+imagenet_classes[predDF["value"].argmax()]
 ```
 
 ```{python}
-x = 0
-dir150=os.path.join(basedir, 'dir150')
-df150 = pd.DataFrame(index=range(200), columns=["fname"])
-if not os.path.isdir(dir150):
-    os.mkdir(dir150)
-for i in filter_list:
-    
-    num = int(re.search('([0-9]+)\.jpg', i).group(1))
-    if num > 17700:
-        break
-    #shutil.copyfile(os.path.join(sample_dir, i), os.path.join(dir150, i))
-    df150.iloc[x] = i
-    x+=1
-    
-print(x)
+imagenet_classes[630]
 ```
 
 ```{python}
-df150 = df150[df150["fname"].notna()]
+# download https://gist.githubusercontent.com/yrevar/942d3a0ac09ec9e5eb3a/raw/238f720ff059c1f82f368259d1ca4ffa5dd8f9f5/imagenet1000_clsidx_to_labels.txt
+# and rename to imagenet_classes.json
+with open('imagenet_classes.json', 'r') as ha:
+    text = ha.read()
+    text = re.sub('{?\s*([0-9]+)\s*:\s*[\'"](.*?)[\'"][,}]', '"\g<1>":"\g<2>",\n', text)
+    text = text[0:-2]
+    text = '{\n'+text+'\n}'
+    #text = text.replace("'", '"')
+    imagenet_classes = json.loads(text)
+    imagenet_classes = {int(k):v for k,v in imagenet_classes.items()}
+imagenet_classes
 ```
 
 ```{python}
-df150.to_csv(os.path.join(basedir, 'scarpe_filtered.csv'))
+def predimg(number):
+    im = tf.keras.preprocessing.image.load_img(
+        os.path.join(basedir, 'train', f'{number}.jpg'),
+        target_size=(300, 300, 3)
+    )
+    imarr = tf.keras.preprocessing.image.img_to_array(im)
+    imarr = np.array([imarr])  # Convert single image to a batch.
+    pred = efb3.predict(imarr)
+    return imagenet_classes[pred[0].argmax()]
 ```
 
 ```{python}
-os.listdir(basedir)
+#[15309, 28206]
+x = 3
+plt.imshow(image.imread(os.path.join(basedir, 'train', f'{x}.jpg')))
+predimg(x)
+```
+
+```{python}
+
 ```
