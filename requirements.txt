@@ -4,3 +4,5 @@ jupytext
 pandas
 tensorflow
 matplotlib
+pydot
+graphvizsklearn

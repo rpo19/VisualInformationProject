@@ -24,6 +24,7 @@ import re
 import tensorflow as tf
 import numpy as np
 import json
+import time
 ```
 
 ```{python}
@@ -39,70 +40,9 @@ df = pd.read_csv(os.path.join(basedir, 'train.csv'))
 ```
 
 ```{python}
-# 11
-```
-
-```{python}
-max(df["class"])
-```
-
-```{python}
-plt.imshow(image.imread(os.path.join(basedir, 'train', '15309.jpg')))
-```
-
-```{python}
-# range scarpe: [15309, 28206] class [1849, 2834]
-```
-
-```{python}
-df[df["class"] == 1849].iloc[0]
-```
-
-```{python}
-df.iloc[28206]
-```
-
-```{python}
 efb3 = tf.keras.applications.EfficientNetB3(
     weights="imagenet"
 )
-```
-
-```{python}
-im = tf.keras.preprocessing.image.load_img(
-    os.path.join(basedir, 'train', '15309.jpg'),
-    target_size=(300, 300, 3)
-)
-```
-
-```{python}
-imarr = tf.keras.preprocessing.image.img_to_array(im)
-imarr = np.array([imarr])  # Convert single image to a batch.
-```
-
-```{python}
-pred = efb3.predict(imarr)
-```
-
-```{python}
-plt.plot(pred[0])
-```
-
-```{python}
-predDF = pd.DataFrame(pred[0], columns=["value"])
-predDF
-```
-
-```{python}
-predDF[predDF["value"] > 0.1]
-```
-
-```{python}
-imagenet_classes[predDF["value"].argmax()]
-```
-
-```{python}
-imagenet_classes[630]
 ```
 
 ```{python}
@@ -116,7 +56,7 @@ with open('imagenet_classes.json', 'r') as ha:
     #text = text.replace("'", '"')
     imagenet_classes = json.loads(text)
     imagenet_classes = {int(k):v for k,v in imagenet_classes.items()}
-imagenet_classes
+#imagenet_classes
 ```
 
 ```{python}
@@ -125,6 +65,8 @@ def predimg(number):
         os.path.join(basedir, 'train', f'{number}.jpg'),
         target_size=(300, 300, 3)
     )
+    plt.imshow(im)
+    plt.show()
     imarr = tf.keras.preprocessing.image.img_to_array(im)
     imarr = np.array([imarr])  # Convert single image to a batch.
     pred = efb3.predict(imarr)
@@ -132,12 +74,208 @@ def predimg(number):
 ```
 
 ```{python}
-#[15309, 28206]
-x = 3
-plt.imshow(image.imread(os.path.join(basedir, 'train', f'{x}.jpg')))
-predimg(x)
+predimg(3)
 ```
 
 ```{python}
+predDF = pd.DataFrame(index=range(0, 28225), columns=imagenet_classes.values(), dtype='double')
+batch = 22
+immax = 28225
+for i in range(0, immax, batch):
+    batcharr = np.empty((batch,300,300,3))
+    for j in range(i, i+batch):
+        im = tf.keras.preprocessing.image.load_img(
+            os.path.join(basedir, 'train', f'{j+1}.jpg'),
+            target_size=(300, 300, 3)
+        )
+        imarr = tf.keras.preprocessing.image.img_to_array(im)
+        imarr = np.array([imarr])  # Convert single image to a batch.
+        np.append(batcharr, imarr)
+    pred = efb3.predict(batcharr)
+    
+    for j in range(0, batch):
+        predDF.iloc[i+j] = pred[j]
+    
+    print(f'\r{i}/{immax}', end='')
+```
 
+```{python}
+batcharr.shape
+```
+
+```{python}
+predDf.to_pickle('./predDF3300.npy')
+```
+
+```{python}
+list(range(0,30000,3000))[1:]
+```
+
+```{python}
+df66 = pd.read_pickle('predDF6600.npy')
+df33 = pd.read_pickle('predDF3300.npy')
+```
+
+```{python}
+es = df33.iloc[0]
+es
+```
+
+```{python}
+df66.loc[3300]
+```
+
+```{python}
+df1  =pd.DataFrame(range(0,10), index=range(0,10),columns=["c"])
+```
+
+```{python}
+df1
+```
+
+```{python}
+df2  =pd.DataFrame(range(0,10), index=range(10,20),columns=["c"])
+```
+
+```{python}
+df2.loc[10]
+```
+
+```{python}
+df = pd.read_pickle('./predDF10.npy')
+```
+
+```{python}
+df.columns[df.loc[3].argmax()]
+```
+
+```{python}
+# and rename to imagenet_classes.json
+with open('imagenet_classes.json', 'r') as ha:
+    text = ha.read()
+    text = re.sub('{?\s*([0-9]+)\s*:\s*[\'"](.*?)[\'"][,}]', '"\g<1>":"\g<2>",\n', text)
+    text = text[0:-2]
+    text = '{\n'+text+'\n}'
+    #text = text.replace("'", '"')
+    imagenet_classes = json.loads(text)
+    imagenet_classes = {int(k):v for k,v in imagenet_classes.items()}
+#imagenet_classes
+```
+
+```{python}
+basedir = '..'
+```
+
+```{python}
+efb3 = tf.keras.applications.EfficientNetB3(
+    weights="imagenet"
+)
+```
+
+```{python}
+def pretty_time_delta(seconds):
+    sign_string = '-' if seconds < 0 else ''
+    seconds = abs(int(seconds))
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if days > 0:
+        return '%s%dd%dh%dm%ds' % (sign_string, days, hours, minutes, seconds)
+    elif hours > 0:
+        return '%s%dh%dm%ds' % (sign_string, hours, minutes, seconds)
+    elif minutes > 0:
+        return '%s%dm%ds' % (sign_string, minutes, seconds)
+    else:
+        return '%s%ds' % (sign_string, seconds)
+
+def myprogress(current,end=None,last=None,lastTime=None): 
+    if end:
+        if lastTime:
+            if not last:
+                delta = 1
+            else:
+                delta = current - last
+            now = time.time() 
+            timeDelta = now - lastTime
+
+            stepTime = timeDelta / delta
+            eta = (end - current) * stepTime
+
+            template = '\r{}/{}, ETA: {}s'
+            print(template.format(current,end,pretty_time_delta(eta)), end='')
+        else:
+            template = '\r{}/{}'
+            print(template.format(current,end), end='')
+    else:
+        template = '\r{}'
+        print(template.format(current), end='')
+
+lastTime = time.time()
+```
+
+```{python}
+lastTime = time.time()
+
+immax = 28225
+dfsize = 10
+mylist = list(range(0,30000,dfsize))[1:]
+predDF = pd.DataFrame(index=range(0, dfsize), columns=imagenet_classes.values(), dtype='double')
+batch = 22
+for i in range(0, immax):
+    if i in mylist:
+        print("\nsaving", f'./predDF{i}.npy')
+        predDF.to_pickle(f'./predDF{i}.npy')
+        predDF = pd.DataFrame(index=range(i, i+dfsize), columns=imagenet_classes.values(), dtype='double')
+
+    
+    im = tf.keras.preprocessing.image.load_img(
+        os.path.join(basedir, 'train', f'{i+1}.jpg'),
+        target_size=(300, 300, 3)
+    )
+    imarr = tf.keras.preprocessing.image.img_to_array(im)
+    #imarr = tf.keras.applications.efficientnet.preprocess_input(imarr)
+    imarr = np.array([imarr])  # Convert single image to a batch.
+        #batcharr = tf.keras.applications.efficientnet.preprocess_input(batcharr)
+    #print("####### shape ########", batcharr.shape)
+    pred = efb3.predict(imarr)
+    
+    
+    predDF.loc[i] = pred[0]
+    
+    myprogress(i, end=immax, last=i-1, lastTime=lastTime)
+    lastTime = time.time()
+    
+    if i == 30:
+        break
+```
+
+```{python}
+predDF[0:10]
+```
+
+```{python}
+batcharr[3].shape
+```
+
+```{python}
+batcharr[3]
+```
+
+```{python}
+pred[3]
+```
+
+```{python}
+for i in pred:
+    print (i[0])
+```
+
+```{python}
+batcharr[0] == batcharr[1]
+
+
+```
+
+```{python}
+batcharr.sum()
 ```
