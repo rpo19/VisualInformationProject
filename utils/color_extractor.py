@@ -9,7 +9,7 @@ class ColorFeaturesExtractor():
         self.bins = bins
         self.center_region_size = center_region_size
 
-    def extract(self, img):
+    def extract(self, img, center_only=False):
         # convert color space to HSV (RGB doesn't handle well shadows)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         # get size of image
@@ -28,13 +28,14 @@ class ColorFeaturesExtractor():
         features_region = self.__colorHist(img, rect_mask, self.bins)
         features.extend(features_region)
 
-        # divide image in corner regions and extract features from each one of them
-        for corner in corners:
-            corner_mask = self.__getCornerRect(corner, centerX, centerY, w, h, rect_mask)
-            # extract features from corner region
-            features_region = self.__colorHist(img, corner_mask, self.bins)
-            # append array of local features to all features
-            features.extend(features_region)
+        if not center_only:
+            # divide image in corner regions and extract features from each one of them
+            for corner in corners:
+                corner_mask = self.__getCornerRect(corner, centerX, centerY, w, h, rect_mask)
+                # extract features from corner region
+                features_region = self.__colorHist(img, corner_mask, self.bins)
+                # append array of local features to all features
+                features.extend(features_region)
         
         return features
     
@@ -73,8 +74,8 @@ if __name__ == "__main__":
     # Bins are specified for each channel of the color space (HSV in this case)
     # We shouldn't specify an high number of bins for the brightness channel because
     # it can introduce noise cause by shadows.
-    features_extractor = ColorFeaturesExtractor((12, 12, 3), 0.6)
-    features = features_extractor.extract(img)
+    features_extractor = ColorFeaturesExtractor((24, 26, 3), 0.6)
+    features = features_extractor.extract(img, center_only=True)
     print('Number of features extracted: ', len(features))
     
  
