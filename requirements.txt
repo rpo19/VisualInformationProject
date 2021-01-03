@@ -7,3 +7,6 @@ matplotlib
 pydot
 graphviz
 sklearn
+opencv-contrib-python
+annoy
+configparser
