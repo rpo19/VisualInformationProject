@@ -4,6 +4,8 @@ import tensorflow as tf
 import random
 import numpy as np
 
+unknown_threshold = 0.35
+
 def fileparts(fn):
     (dirName, fileName) = os.path.split(fn)
     (fileBaseName, fileExtension) = os.path.splitext(fileName)
@@ -32,7 +34,7 @@ def imageHandler(bot, message, chat_id, local_filename):
     X = loadimg(local_filename)
     pred = model.predict(X)
 
-    detected_class = classes[pred[0].argmax()].upper()
+    detected_class = softmax2class(pred[0], classes, threshold=unknown_threshold).upper()
 
     bot.sendMessage(chat_id, f"""
 I bet this is a **{detected_class}**!
@@ -49,10 +51,28 @@ def loadimg(img_path):
 
     return np.array([imarr])
 
+def softmax2class(softmax, classes, threshold=0.5, unknown='unknown'):
+  max = softmax.max()
+  if max >= threshold:
+    argmax = softmax.argmax()
+    return classes[argmax]
+  else:
+    return unknown
+
 if __name__ == "__main__":
 
     model = tf.keras.models.load_model('mymodel.h5')
-    classes = ['shoe','trousers','jacket','sweatshirt']
+    classes = [
+		'trousers',
+        'shoe',
+        'shorts',
+        'jacket',
+        'sweatshirt',
+        'elegant_jacket',
+        'high_heels_shoe',
+        't_shirt',
+        'bag'
+        ]
 
     bot_id = '1478693264:AAG-4qWeWjEIDl2hvV0khOuO4-zn2w2QCrQ'
     updater = Updater(bot_id)
