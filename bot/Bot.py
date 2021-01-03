@@ -45,7 +45,7 @@ class Bot:
 
     def sendMediaGroup(self, chat_id, photoPathList, caption):
         try:
-            print("sto inviando le immagini...")
+            print("sto inviando le immagini...", photoPathList)
             url = self.base_url + 'sendMediaGroup'
 
             photoDict = {os.path.basename(photo): open(photo, 'rb') for photo in photoPathList}
