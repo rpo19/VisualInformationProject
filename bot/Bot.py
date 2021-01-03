@@ -43,6 +43,21 @@ class Bot:
         else:
             print("Immagine non trovata: " + image_path)
 
+    def sendMediaGroup(self, chat_id, photoPathList, caption):
+        try:
+            print("sto inviando le immagini...")
+            url = self.base_url + 'sendMediaGroup'
+
+            photoDict = {os.path.basename(photo): open(photo, 'rb') for photo in photoPathList}
+            media = [{'type': 'photo', 'media': 'attach://'+photoKey} for photoKey in photoDict.keys()]
+            media[0]['caption'] = caption
+
+            data  = {"chat_id": chat_id, "media": json.dumps(media)}
+
+            r = requests.post(url, files=photoDict, data=data)
+        except FileNotFoundError as err:
+            print("Immagine non trovata: " + err)
+
     def sendDocument(self, chat_id, doc_path):
         #http://docs.python-requests.org/en/latest/user/quickstart/
         if os.path.isfile(doc_path):

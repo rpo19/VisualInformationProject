@@ -54,9 +54,9 @@ I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
         img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
     names = get_names_from_indexes(indexes)
 
-    for retrieved in names:
-        retrieved_path = '../../train/' + retrieved
-        bot.sendImage(chat_id, retrieved_path, "Here is a similar image!")
+    names = ['../../train/' + name for name in names]
+
+    bot.sendMediaGroup(chat_id, names, "Here some similar images!")
 
 def loadimg(img_path):
 
