@@ -3,6 +3,11 @@ import os, sys, platform, subprocess
 import tensorflow as tf
 import random
 import numpy as np
+from annoy import AnnoyIndex
+import cv2
+from utils.color_extractor import ColorFeaturesExtractor
+from utils.retriever import Retriever
+from utils.utils import get_names_from_indexes
 
 unknown_threshold = 0.5
 
@@ -43,6 +48,16 @@ def imageHandler(bot, message, chat_id, local_filename):
 I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
 """)
 
+    img = cv2.imread(local_filename)
+    img_features = cfe.extract(img, True)
+    indexes = retriever.retrieve(
+        img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
+    names = get_names_from_indexes(indexes)
+
+    for retrieved in names:
+        retrieved_path = '../../train/' + retrieved
+        bot.sendImage(chat_id, retrieved_path, "Here is a similar image!")
+
 def loadimg(img_path):
 
     im = tf.keras.preprocessing.image.load_img(
@@ -76,6 +91,10 @@ if __name__ == "__main__":
         't_shirt',
         'bag'
         ]
+
+    cfe = ColorFeaturesExtractor((24,26,3), 0.6)
+
+    retriever = Retriever('../indexes/')
 
     bot_id = '1478693264:AAG-4qWeWjEIDl2hvV0khOuO4-zn2w2QCrQ'
     updater = Updater(bot_id)
