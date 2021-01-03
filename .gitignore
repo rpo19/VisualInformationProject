@@ -6,3 +6,4 @@ venv
 *.npy
 indexes
 data
+test_imgs
