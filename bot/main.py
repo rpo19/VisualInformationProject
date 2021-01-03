@@ -4,7 +4,7 @@ import tensorflow as tf
 import random
 import numpy as np
 
-unknown_threshold = 0.35
+unknown_threshold = 0.5
 
 def fileparts(fn):
     (dirName, fileName) = os.path.split(fn)
@@ -34,10 +34,13 @@ def imageHandler(bot, message, chat_id, local_filename):
     X = loadimg(local_filename)
     pred = model.predict(X)
 
-    detected_class = softmax2class(pred[0], classes, threshold=unknown_threshold).upper()
+    detected_class, confidence_lvl = softmax2class(
+        pred[0], classes, threshold=unknown_threshold)
+
+    detected_class = detected_class.upper()
 
     bot.sendMessage(chat_id, f"""
-I bet this is a **{detected_class}**!
+I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
 """)
 
 def loadimg(img_path):
@@ -55,9 +58,9 @@ def softmax2class(softmax, classes, threshold=0.5, unknown='unknown'):
   max = softmax.max()
   if max >= threshold:
     argmax = softmax.argmax()
-    return classes[argmax]
+    return classes[argmax], max
   else:
-    return unknown
+    return unknown, max
 
 if __name__ == "__main__":
 
