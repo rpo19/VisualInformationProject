@@ -10,6 +10,7 @@ class Retriever():
         # create on the first run
         if not os.path.exists(indexes_path):
             os.makedirs(indexes_path)
+            with open(os.path.join(indexes_path, 'retrieval_modes.ini'), 'w') as settings: pass
 
     def create_index(self, df_features, retrieval_mode, metric):
         ### create index
@@ -80,6 +81,7 @@ class Retriever():
         return (num_features, metric)
 
 if __name__ == "__main__":
+    retriever = Retriever('prova')
     print('test')
 
     
