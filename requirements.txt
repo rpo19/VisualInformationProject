@@ -5,4 +5,5 @@ pandas
 tensorflow
 matplotlib
 pydot
-graphvizsklearn
+graphviz
+sklearn
