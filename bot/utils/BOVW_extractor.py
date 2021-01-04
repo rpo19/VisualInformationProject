@@ -12,13 +12,13 @@ class BOVWFeaturesExtractor():
         self.kmeans = None
         # load BOVW dictionary if provided
         if path_to_dict is not None:
-            with open('BOVW_dict.pckl', 'rb') as handle:
+            with open(os.path.join(path_to_dict, 'BOVW_dict.pckl'), 'rb') as handle:
                 self.kmeans = pickle.load(handle)
                 self.kmeans.verbose = 0
             
     
     # build BOVW dioctionary
-    def build_dict(self, path_to_images, n_of_words, save_path, path_to_descriptors=None, center_only=False):
+    def build_dict(self, path_to_images, n_of_words, save_path, path_to_descriptors=None):
         
         if path_to_descriptors is None:
             descriptors = self.__extract_sift_descriptors_from_directory(path_to_images)
@@ -42,10 +42,10 @@ class BOVWFeaturesExtractor():
 
 
     # extract features vector
-    def extract(self, img, center_only=False):
+    def extract(self, img):
 
         # extract SIFT descriptors from image
-        descriptors = self.__extract_sift_descriptors(img, center_only)
+        descriptors = self.__extract_sift_descriptors(img)
         descriptors = np.array(descriptors, dtype=np.float)
 
         # initilize feature vector (histogram)
@@ -63,22 +63,10 @@ class BOVWFeaturesExtractor():
         return list(hist)
 
     
-    def __getCenterRect(self, centerX, centerY, w, h):
-        # create mask of zeros
-        mask = np.zeros((w, h), dtype = 'uint8')
-        # compute top left corner of rect and bottom right corner of rect
-        top_left = (centerX - int(centerX * self.center_region_size), centerY + int(centerY * self.center_region_size))
-        bottom_right = (centerX + int(centerX * self.center_region_size),  centerY - int(centerY * self.center_region_size)) 
-
-        # set center rectangle to white
-        mask[top_left[0]: bottom_right[0], bottom_right[1]:top_left[1]] = 255
-        return mask
-    
-    def __extract_sift_descriptors(self, img, center_only):
+    def __extract_sift_descriptors(self, img):
         # convert image to gray scale
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         (w, h) = img.shape
-        mask = None
 
         if w > 500 and h > 500: 
             # calculate new dimensions
@@ -88,15 +76,10 @@ class BOVWFeaturesExtractor():
             # resize image by mantaining aspect ratio
             resized = cv2.resize(img, (width, height), interpolation = cv2.INTER_AREA)
 
-            if center_only:
-                # compute center coordinates
-                (centerX, centerY) = (int(w/2), int(h/2))
-
-                # get mask for center region
-                mask = self.__getCenterRect(centerX, centerY, w, h)
+            
 
         # extract SIFT keypoints and descriptors from the whole image
-        _, desc = self.sift.detectAndCompute(img, mask=mask)
+        _, desc = self.sift.detectAndCompute(img, mask=None)
         return desc
     
     def __extract_sift_descriptors_from_directory(self, path_to_images):
@@ -112,7 +95,7 @@ class BOVWFeaturesExtractor():
                 for i, f_name in enumerate(files):
                     print(f'\r{i+1}/{len(files)}', end='')
                     img = cv2.imread(path_to_images + '/' + directory + '/' + f_name)
-                    desc = self.__extract_sift_descriptors(img, center_only)
+                    desc = self.__extract_sift_descriptors(img)
                     descriptors.extend(desc)
                 print('\n')
         return descriptors
