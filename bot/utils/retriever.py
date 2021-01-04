@@ -18,8 +18,10 @@ class Retriever():
         num_features = len(df_features.loc[0])
         t = AnnoyIndex(num_features, metric=metric)
         # add features vector to the index
+        i = 0
         for index, row in df_features.iterrows():
-            t.add_item(index, row.values)    
+            t.add_item(i, row.values)    
+            i = i+1
         # num_trees = num_classes
         num_trees = 9
         t.build(num_trees)
