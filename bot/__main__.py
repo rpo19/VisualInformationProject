@@ -1,16 +1,27 @@
-from Updater import Updater
+from bot.Updater import Updater
 import os, sys, platform, subprocess
 import tensorflow as tf
 import random
 import numpy as np
 from annoy import AnnoyIndex
 import cv2
-from utils.color_extractor import ColorFeaturesExtractor
-from utils.retriever import Retriever
-from utils.utils import get_names_from_indexes
-import mysecrets
+from bot.utils.color_extractor import ColorFeaturesExtractor
+from bot.utils.retriever import Retriever
+from bot.utils.utils import get_names_from_indexes
+import pandas as pd
+import bot.secrets
 
 unknown_threshold = 0.5
+
+base_dir = '.'
+
+index_dir = os.path.join(base_dir, 'indexes')
+data_dir = os.path.join(base_dir, 'data')
+img_dir = os.path.join(data_dir, 'train')
+
+names_df_path = os.path.join(data_dir, 'train_filtered.csv')
+
+model_path = os.path.join(data_dir, 'model.h5')
 
 def fileparts(fn):
     (dirName, fileName) = os.path.split(fn)
@@ -53,9 +64,9 @@ I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
     img_features = cfe.extract(img, True)
     indexes = retriever.retrieve(
         img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
-    names = get_names_from_indexes(indexes)
+    names = get_names_from_indexes(indexes, names_df)
 
-    names = ['../../train/' + name for name in names]
+    names = [os.path.join(img_dir, name) for name in names]
 
     bot.sendMediaGroup(chat_id, names, "Here some similar images!")
 
@@ -80,7 +91,7 @@ def softmax2class(softmax, classes, threshold=0.5, unknown='unknown'):
 
 if __name__ == "__main__":
 
-    model = tf.keras.models.load_model('mymodel.h5')
+    model = tf.keras.models.load_model(model_path)
     classes = [
 		'trousers',
         'shoe',
@@ -95,9 +106,11 @@ if __name__ == "__main__":
 
     cfe = ColorFeaturesExtractor((24,26,3), 0.6)
 
-    retriever = Retriever('../indexes/')
+    retriever = Retriever(index_dir)
 
-    bot_id = mysecrets.bot_id
+    names_df = pd.read_csv(names_df_path)
+
+    bot_id = bot.secrets.bot_id
     updater = Updater(bot_id)
     updater.setPhotoHandler(imageHandler)
     updater.start()
