@@ -19,7 +19,7 @@ index_dir = os.path.join(base_dir, 'indexes')
 data_dir = os.path.join(base_dir, 'data')
 img_dir = os.path.join(data_dir, 'train')
 
-names_df_path = os.path.join(data_dir, 'train_filtered.csv')
+names_df_path = os.path.join(data_dir, 'retrieval_base.csv')
 
 model_path = os.path.join(data_dir, 'model.h5')
 
