@@ -8,6 +8,7 @@ import cv2
 from utils.color_extractor import ColorFeaturesExtractor
 from utils.retriever import Retriever
 from utils.utils import get_names_from_indexes
+import mysecrets
 
 unknown_threshold = 0.5
 
@@ -96,7 +97,7 @@ if __name__ == "__main__":
 
     retriever = Retriever('../indexes/')
 
-    bot_id = '1478693264:AAG-4qWeWjEIDl2hvV0khOuO4-zn2w2QCrQ'
+    bot_id = mysecrets.bot_id
     updater = Updater(bot_id)
     updater.setPhotoHandler(imageHandler)
     updater.start()
