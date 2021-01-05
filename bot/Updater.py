@@ -35,7 +35,7 @@ class Updater:
                 messageType = self.bot.getMessageType(u['message'])
                 message     = u['message']
                 chat_id     = message['chat']['id']
-                name        = message['chat']['first_name']
+                #name        = message['chat']['first_name']
                 message_id  = message['message_id']
                 # call right functors
                 if messageType == 'text':
