@@ -10,6 +10,7 @@ from bot.utils.retriever import Retriever
 from bot.utils.utils import get_names_from_indexes
 import pandas as pd
 import bot.secrets
+import bot.utils.filter_input as filter_input
 
 unknown_threshold = 0.5
 
@@ -29,26 +30,30 @@ def fileparts(fn):
     return dirName, fileBaseName, fileExtension
 
 
-def imageHandler(bot, message, chat_id, local_filename):
-    print(local_filename)
-    # send message to user
-    # bot.sendMessage(chat_id, "Welcome")
-    # # set matlab command
-    # if 'Linux' in platform.system():
-    #     matlab_cmd = '/usr/local/bin/matlab'
-    # else:
-    #     matlab_cmd = '"C:\\Program Files\\MATLAB\\R2016a\\bin\\matlab.exe"'
-    # # set command to start matlab script "edges.m"
-    # cur_dir = os.path.dirname(os.path.realpath(__file__))
-    # cmd = matlab_cmd + " -nodesktop -nosplash -nodisplay -wait -r \"addpath(\'" + cur_dir + "\'); edges(\'" + local_filename + "\'); quit\""
-    # # lunch command
-    # subprocess.call(cmd,shell=True)
-    # # send back the manipulated image
-    # dirName, fileBaseName, fileExtension = fileparts(local_filename)
-    # new_fn = os.path.join(dirName, fileBaseName + '_ok' + fileExtension)
-    #new_fn = '/home/rpo/Downloads/Telegram Desktop/photo_2020-12-28_17-24-20.jpg'
+def imageHandler(bot, message, chat_id, img_path):
+    print(img_path)
 
-    X = loadimg(local_filename)
+    # quality check
+    quality_check = True
+    # blur
+    is_blurred, sharpness = filter_input.is_blurred(img_path, 100)
+    if is_blurred:
+        bot.sendMessage(chat_id, f"The image is blurred! Sharpness: {sharpness}")
+        print("image is blurred!")
+        quality_check = False
+
+    is_dark, brightness = filter_input.is_dark(img_path)
+    if is_dark:
+        bot.sendMessage(chat_id, f"The image is dark! Brightness: {brightness}")
+        print("image is dark!")
+        quality_check = False
+
+    if not quality_check:
+        bot.sendMessage(chat_id, "I'm sorry your image didn't pass the quality check!")
+        print("quality check failed!")
+        return        
+
+    X = loadimg(img_path)
     pred = model.predict(X)
 
     detected_class, confidence_lvl = softmax2class(
@@ -60,7 +65,7 @@ def imageHandler(bot, message, chat_id, local_filename):
 I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
 """)
 
-    img = cv2.imread(local_filename)
+    img = cv2.imread(img_path)
     img_features = cfe.extract(img, True)
     indexes = retriever.retrieve(
         img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
