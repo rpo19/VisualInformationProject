@@ -36,7 +36,7 @@ def imageHandler(bot, message, chat_id, img_path):
     # quality check
     quality_check = True
     # blur
-    is_blurred, sharpness = filter_input.is_blurred(img_path, 100)
+    is_blurred, sharpness = filter_input.is_blurred(img_path)
     if is_blurred:
         bot.sendMessage(chat_id, f"The image is blurred! Sharpness: {sharpness}")
         print("image is blurred!")
