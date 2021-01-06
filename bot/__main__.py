@@ -11,6 +11,7 @@ from bot.utils.utils import get_names_from_indexes
 import pandas as pd
 import bot.secrets
 import bot.utils.filter_input as filter_input
+import bot.utils.PickleDBExtended
 
 unknown_threshold = 0
 blur_threshold = 0.3
@@ -26,13 +27,53 @@ names_df_path = os.path.join(data_dir, 'retrieval_base.csv')
 
 model_path = os.path.join(data_dir, 'model.h5')
 
+db_path = os.path.join(data_dir, 'state.db')
+
 def fileparts(fn):
     (dirName, fileName) = os.path.split(fn)
     (fileBaseName, fileExtension) = os.path.splitext(fileName)
     return dirName, fileBaseName, fileExtension
 
+def textHandler(bot, message, chat_id, text):
+    #print(f'{chat_id}: {message} text: {text}')
+
+    state = db.get(chat_id) or 'tostart'
+
+    print('state', state)
+
+    if text == '/stop':
+        db.set(chat_id, 'tostart')
+        bot.sendMessage(chat_id, 'Hi, send /start to begin!', keyboard=[['/start']])
+
+    elif state == 'tostart':
+        if text == '/start':
+            db.set(chat_id, 'wait4command')
+            bot.sendMessage(chat_id, 'What do you want to do?',
+                keyboard=[['send an image','nothing']])
+        else:
+            bot.sendMessage(chat_id, 'Hi, send /start to begin!', keyboard=[['/start']])
+
+    elif state == 'wait4command':
+        if text == 'send an image':
+            db.set(chat_id, 'wait4image')
+            bot.sendMessage(chat_id, 'Send an image then!')
+        else:
+            db.set(chat_id, 'tostart')
+            bot.sendMessage(chat_id, 'Hi, send /start to begin!', keyboard=[['/start']])
+
+    elif state == 'wait4image':
+        bot.sendMessage(chat_id, "I'm waiting for your image...")       
+
+
 
 def imageHandler(bot, message, chat_id, img_path):
+    state = db.get(chat_id) or 'tostart'
+    if state != 'wait4image':
+        bot.sendMessage(chat_id, 'Hi, send /start to begin!', keyboard=[['/start']])
+        return
+
+    state = db.set(chat_id, 'tostart')
+
     print(img_path)
 
     # quality check
@@ -77,6 +118,8 @@ I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
 
     bot.sendMediaGroup(chat_id, names, "Here some similar images!")
 
+    bot.sendMessage(chat_id, 'Hi, send /start to begin!', keyboard=[['/start']])
+
 def loadimg(img_path):
 
     im = tf.keras.preprocessing.image.load_img(
@@ -117,7 +160,10 @@ if __name__ == "__main__":
 
     names_df = pd.read_csv(names_df_path)
 
+    db = bot.utils.PickleDBExtended.load(db_path, True)
+
     bot_id = bot.secrets.bot_id
     updater = Updater(bot_id)
     updater.setPhotoHandler(imageHandler)
+    updater.setTextHandler(textHandler)
     updater.start()

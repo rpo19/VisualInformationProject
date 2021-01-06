@@ -29,8 +29,23 @@ class Bot:
         if 'text' in message:
             return 'text'
 
-    def sendMessage(self, chat_id, text):
-        return self.query("sendMessage", { "chat_id": chat_id, "text": text} )
+    def sendMessage(self, chat_id, text, keyboard=None):
+        # {
+        #     'keyboard': [00, 10,
+        #                    01, 11]
+        #     'resize_keyboard': True,
+        #     'one_time_keyboard': True
+        # }
+        if keyboard:
+            reply_markup = {
+                'resize_keyboard': True,
+                'one_time_keyboard': True,
+                'keyboard' : keyboard
+            }
+            self.query("sendMessage", { "chat_id": chat_id,
+                "text": text, "reply_markup": json.dumps(reply_markup)} )
+        else:
+            return self.query("sendMessage", { "chat_id": chat_id, "text": text} )
     
     def sendImage(self, chat_id, image_path, caption):
         #http://docs.python-requests.org/en/latest/user/quickstart/

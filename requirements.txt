@@ -10,3 +10,4 @@ sklearn
 opencv-contrib-python
 annoy
 configparser
+pickledb
