@@ -12,7 +12,9 @@ import pandas as pd
 import bot.secrets
 import bot.utils.filter_input as filter_input
 
-unknown_threshold = 0.5
+unknown_threshold = 0
+blur_threshold = 0.3
+dark_threshold = 0.3
 
 base_dir = '.'
 
@@ -36,13 +38,13 @@ def imageHandler(bot, message, chat_id, img_path):
     # quality check
     quality_check = True
     # blur
-    is_blurred, sharpness = filter_input.is_blurred(img_path)
+    is_blurred, sharpness = filter_input.is_blurred(img_path, blur_threshold)
     if is_blurred:
         bot.sendMessage(chat_id, f"The image is blurred! Sharpness: {sharpness}")
         print("image is blurred!")
         quality_check = False
 
-    is_dark, brightness = filter_input.is_dark(img_path)
+    is_dark, brightness = filter_input.is_dark(img_path, dark_threshold)
     if is_dark:
         bot.sendMessage(chat_id, f"The image is dark! Brightness: {brightness}")
         print("image is dark!")
@@ -97,17 +99,17 @@ def softmax2class(softmax, classes, threshold=0.5, unknown='unknown'):
 if __name__ == "__main__":
 
     model = tf.keras.models.load_model(model_path)
-    classes = [
-		'trousers',
-        'shoe',
-        'shorts',
-        'jacket',
-        'sweatshirt',
-        'elegant_jacket',
-        'high_heels_shoe',
-        't_shirt',
-        'bag'
-        ]
+    classes = ['bag',
+                'elegant_jacket',
+                'high_heels_shoe',
+                'jacket',
+                'shoe',
+                'shorts',
+                'sweatshirt',
+                't_shirt',
+                'trousers',
+                'unknown'
+              ]
 
     cfe = ColorFeaturesExtractor((24,26,3), 0.6)
 
