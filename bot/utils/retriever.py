@@ -5,12 +5,31 @@ import configparser
 # TODO: valutare se può servire get_nns_by_item per feedback retrieval
 class Retriever():
 
-    def __init__(self, indexes_path):
+    def __init__(self, indexes_path, load_all=False):
         self.indexes_path = indexes_path
+        self.load_all = load_all
+        self.indexes = {}
         # create on the first run
         if not os.path.exists(indexes_path):
             os.makedirs(indexes_path)
             with open(os.path.join(indexes_path, 'retrieval_modes.ini'), 'w') as settings: pass
+        if load_all:
+            self.__load_indexes(indexes_path)
+    
+    def __load_indexes(self, indexes_path):
+        # read from settings file
+        settings = configparser.RawConfigParser()
+        settings.read(os.path.join(self.indexes_path, 'retrieval_modes.ini'))
+        # load all the indexes
+        for retrieval_mode in settings.sections():
+            print('loading', retrieval_mode, '...')
+            # get settings of the index
+            (num_features, metric) = self.__get_settings(retrieval_mode)
+            # load the entire index
+            t = AnnoyIndex(num_features, metric=metric)
+            t.load(os.path.join(self.indexes_path, retrieval_mode), prefault=True)
+            # add index to indexes
+            self.indexes[retrieval_mode] = t
 
     def create_index(self, df_features, retrieval_mode, metric):
         ### create index
@@ -47,7 +66,7 @@ class Retriever():
             settings.write(configfile)
 
     # TODO: valutare search_k per tradeoff... se è velocissimo si può alzare per migliorare accuracy
-    def retrieve(self, img_features, retrieval_mode, n_neighbours=5, include_distances = False):
+    def __load_and_retrieve(self, img_features, retrieval_mode, n_neighbours=5, include_distances = False):
         # get settings of the retrieval_mode
         (num_features, metric) = self.__get_settings(retrieval_mode)
         # load index
@@ -58,6 +77,18 @@ class Retriever():
         # unload index
         t.unload()
         return indexes
+
+    def retrieve(self, img_features, retrieval_mode, n_neighbours=5, include_distances = False):
+        if not self.load_all:
+            print('load index, retrieve and unload index')
+            return self.__load_and_retrieve(img_features, retrieval_mode, n_neighbours, include_distances)
+        else:
+            print('retrieve from preloaded indexes')
+            # get index
+            t = self.indexes[retrieval_mode]
+            # retrieve indexes of the n most similar images
+            return t.get_nns_by_vector(img_features, n = n_neighbours, include_distances = include_distances)
+
 
 
     def __save_settings(self, retrieval_mode, num_features, metric):
