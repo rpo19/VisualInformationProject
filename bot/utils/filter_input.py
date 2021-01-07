@@ -106,3 +106,20 @@ def has_clear_margins(img_path, margin=1):
         [top_canny, bottom_canny, np.transpose(left_canny), np.transpose(right_canny)], axis=1)
     # edges pixels are represented as 255 in canny, while the non-edges are 0
     return concatenated.max() == 0
+
+def has_uniform_bg(img_path, threshold=10, margin=1):
+    # read img
+    img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+    # extract stripes
+    width = img.shape[1]
+    height = img.shape[0]
+    top_border = img[0:margin, :]
+    bottom_border = img[height-margin:height, :]
+    left_border = img[:, 0:margin]
+    right_border = img[:, width-margin:width]
+    # concatenate stripes
+    concatenated = np.concatenate([top_border, bottom_border, np.transpose(left_border), np.transpose(right_border)], axis=1)
+    # compute std
+    std = concatenated.std()
+    print('std', std)
+    return std < threshold

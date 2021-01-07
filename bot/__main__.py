@@ -8,7 +8,9 @@ import random
 import numpy as np
 from annoy import AnnoyIndex
 import cv2
+from skimage.io import imread
 from bot.utils.color_extractor import ColorFeaturesExtractor
+from bot.utils.hog_extractor import HogFeaturesExtractor
 from bot.utils.retriever import Retriever
 from bot.utils.utils import get_names_from_indexes
 import pandas as pd
@@ -16,6 +18,7 @@ import bot.secrets
 import bot.utils.filter_input as filter_input
 import bot.utils.PickleDBExtended
 from bot.utils import style_transfer
+
 
 BTN_STOP = '/stop'
 BTN_START = '/start'
@@ -50,6 +53,8 @@ MSG_SEND_FOR_APPLY_FILTER_BASE = 'Which kind of filter you want to apply?'
 MSG_SEND_FOR_APPLY_FILTER = 'Send an image to apply the selected filter'
 MSG_FILTER_DONE = 'Hope you like it!'
 MSG_STYLE_TRANSFER_DONE = 'Hope you like the new style!'
+MSG_RETRIEVAL_NEW_STYLE_DONE = "Here some similar clothes to the one generated!"
+MSG_RETRIEVAL__DONE = "Here some similar clothes"
 
 BTN_SEARCH_SIMILAR = 'Retrieve similar products'
 BTN_STYLE_TRANSFER = 'Apply style to a product'
@@ -211,12 +216,14 @@ def do_style_transfer(bot, chat_id, img_style):
         # exception
         pass
     
-    # TODO: vedere controllo sfondo uniforme (es: scarpa bianca su sfondo bianco fa casini con bilateral=True)
+    # TODO: vedere se ok controllo sfondo uniforme (es: scarpa bianca su sfondo bianco fa casini con bilateral=True)
+    use_bilateral = not filter_input.has_uniform_bg(img_base)
+    print('use bilateral:', use_bilateral)
     # TODO: vedere se usare o no pesi di default
-    img_new = style_transfer.style_transfer(img_base, img_style, maximize_color=True, bilateral=True)
+    img_new = style_transfer.style_transfer(img_base, img_style, maximize_color=True, bilateral=use_bilateral)
     cv2.imwrite(img_base, img_new)
     bot.sendImage(chat_id, img_base, MSG_STYLE_TRANSFER_DONE)
-    # TODO: vedere se settare stato su retrieval
+    return img_base
 
 def do_similarity(bot, chat_id, similarity, img_path):
     # faccio cose
@@ -238,18 +245,43 @@ chosen similarity: {similarity}
 I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
 """)
 
-    img = cv2.imread(img_path)
-    img_features = cfe.extract(img, True)
-    indexes = retriever.retrieve(
-        img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
+    # retrieve similar with the selected modality
+    if similarity == BTN_SIMIL_COLOR:
+        indexes = do_color_retrieval(img_path)
+    elif similarity == BTN_SIMIL_SHAPE:
+        indexes = do_shape_retrieval(img_path)
+    elif similarity == BTN_SIMIL_NEURAL:
+        indexes = do_neural_network_retrieval(img_path)
+
     names = get_names_from_indexes(indexes, names_df)
 
     names = [os.path.join(img_dir, name) for name in names]
 
-    bot.sendMediaGroup(chat_id, names, "Here some similar images!")
+    bot.sendMediaGroup(chat_id, names, MSG_RETRIEVAL__DONE)
 
     bot.sendMessage(chat_id, MSG_START, keyboard=[[BTN_START]])
-    
+
+def do_color_retrieval(img_path):
+    img = cv2.imread(img_path)
+    img_features = cfe.extract(img, True)
+    indexes = retriever.retrieve(
+        img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
+    return indexes
+
+def do_neural_network_retrieval(img_path):
+    img = loadimg(img_path)
+    img_features = model.predict(img)[1][0]
+    indexes = retriever.retrieve(
+        img_features, retrieval_mode='neural_network', n_neighbours=5, include_distances=False)
+    return indexes
+
+def do_shape_retrieval(img_path):
+    img = imread(img_path)
+    img_features = hfe.extract(img)
+    indexes = retriever.retrieve(
+        img_features, retrieval_mode='hog', n_neighbours=5, include_distances=False)
+    return indexes
+
 def do_filter(bot, chat_id, filter, img_path):
     bot.sendMessage(chat_id, f"""
 Applying {filter} filter to image
@@ -313,8 +345,14 @@ def imageHandler(bot, message, chat_id, img_path):
             db.set(chat_id, STATE_WAIT_STYLE_STYLE)
 
     elif state == STATE_WAIT_STYLE_STYLE:
-        do_style_transfer(bot, chat_id, img_path)
-
+        # apply new style
+        img_new = do_style_transfer(bot, chat_id, img_path)
+        # retrieve similar products
+        indexes = do_neural_network_retrieval(img_new)
+        names = get_names_from_indexes(indexes, names_df)
+        names = [os.path.join(img_dir, name) for name in names]
+        bot.sendMediaGroup(chat_id, names, MSG_RETRIEVAL_NEW_STYLE_DONE)
+        bot.sendMessage(chat_id, MSG_START, keyboard=[[BTN_START]])
         db.set(chat_id, STATE_TOSTART)
 
     elif state == STATE_WAIT_SIMILAR_IMAGE:
@@ -350,6 +388,7 @@ def imageHandler(bot, message, chat_id, img_path):
             # problemi
         else:
             do_similarity(bot, chat_id, similarity, img_path)
+
             db.set(chat_id, STATE_TOSTART)
 
     elif state == STATE_WAIT_FOR_APPLY_FILTER:
@@ -402,6 +441,8 @@ if __name__ == "__main__":
                ]
 
     cfe = ColorFeaturesExtractor((24, 26, 3), 0.6)
+    
+    hfe = HogFeaturesExtractor()
 
     retriever = Retriever(index_dir, load_all=True)
 
