@@ -41,8 +41,8 @@ STATE_WAIT_FOR_APPLY_FILTER = 'STATE_WAIT_APPLYING_FILTER'
 
 MSG_START = 'Hi, send /start to begin!'
 MSG_PROMPT_ACTION = 'What do you want to do?'
-MSG_SEND_FOR_SIMILAR = 'Send an image of a cloth'
-MSG_SEND_FOR_STYLE_BASE = 'Send an image of a cloth to which you want to apply a new style'
+MSG_SEND_FOR_SIMILAR = 'Send an image of a clothing'
+MSG_SEND_FOR_STYLE_BASE = 'Send an image of a clothing to which you want to apply a new style'
 MSG_SEND_FOR_STYLE_STYLE = 'Send a style texture'
 MSG_CHOOSE_SIMILARITY = 'Choose which kind of similarity to look for'
 MSG_QUALITY_CHECK_FAILED = "The image sent didn't pass the quality check due to {}. Continue anyway?"
