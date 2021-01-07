@@ -63,6 +63,7 @@ img_dir = os.path.join(data_dir, 'train')
 names_df_path = os.path.join(data_dir, 'retrieval_base.csv')
 
 model_path = os.path.join(data_dir, 'model.h5')
+blur_model_path = os.path.join(data_dir, 'blur_model_4k.h5')
 
 db_path = os.path.join(data_dir, 'state.db')
 
@@ -152,17 +153,21 @@ def textHandler(bot, message, chat_id, text):
             else:
                 # todo
                 pass
+        else:
+            db.set(chat_id, STATE_TOSTART)
+            bot.sendMessage(chat_id, MSG_START, keyboard=[[BTN_START]])
     # else: far capire all utente cosa si aspetta
 
 
 def quality_control_blur_dark(img_path, blur_threshold, dark_threshold):
-    is_blurred, sharpness = filter_input.is_blurred(img_path, blur_threshold)
+    is_blurred = filter_input.is_blurred(img_path, blur_model)
     if is_blurred:
-        print(f"image is blurred! Sharpness: {sharpness}")
+        print(f"image is blurred!")
 
-    is_dark, brightness = filter_input.is_dark(img_path, dark_threshold)
+    is_dark, img_fixed = filter_input.fix_darkness(img_path, dark_threshold)
     if is_dark:
-        print(f"image is dark! brigthness: {brightness}")
+        cv2.imwrite(img_path, img_fixed)
+        print(f"image is dark!")
 
     return is_blurred, is_dark
 
@@ -223,13 +228,8 @@ def imageHandler(bot, message, chat_id, img_path):
             img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
 
         # todo aggiungere controllo margini
-        if is_blur or is_dark:
-            if is_blur and is_dark:
-                cause = 'blurriness and darkness'
-            elif is_blur:
-                cause = 'blurriness'
-            elif is_dark:
-                cause = 'darkness'
+        if is_blur:
+            cause = 'blurriness'
 
             bot.sendMessage(chat_id, MSG_QUALITY_CHECK_FAILED.format(cause),
                             keyboard=[
@@ -267,14 +267,8 @@ def imageHandler(bot, message, chat_id, img_path):
             img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
 
         # todo aggiungere controllo margini
-        if is_blur or is_dark:
-            if is_blur and is_dark:
-                cause = 'blurriness and darkness'
-            elif is_blur:
-                cause = 'blurriness'
-            elif is_dark:
-                cause = 'darkness'
-
+        if is_blur:
+            cause = 'blurriness'
             bot.sendMessage(chat_id, MSG_QUALITY_CHECK_FAILED.format(cause),
                             keyboard=[
                 [BTN_YES, BTN_NO],
@@ -320,6 +314,7 @@ def softmax2class(softmax, classes, threshold=0.5, unknown='unknown'):
 if __name__ == "__main__":
 
     model = tf.keras.models.load_model(model_path)
+    blur_model = tf.keras.models.load_model(blur_model_path)
     classes = ['bag',
                'elegant_jacket',
                'high_heels_shoe',
@@ -334,7 +329,7 @@ if __name__ == "__main__":
 
     cfe = ColorFeaturesExtractor((24, 26, 3), 0.6)
 
-    retriever = Retriever(index_dir)
+    retriever = Retriever(index_dir, load_all=True)
 
     names_df = pd.read_csv(names_df_path)
 

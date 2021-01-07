@@ -1,9 +1,12 @@
 import cv2
 import numpy as np
 import statistics
+import tempfile
+import tensorflow as tf
 
 
-def is_blurred(img_path, threshold=50):
+
+def is_blurred_old(img_path, threshold=50):
     # show img
     img = cv2.imread(img_path, cv2.IMREAD_COLOR)
 
@@ -14,6 +17,21 @@ def is_blurred(img_path, threshold=50):
 
     return laplacian_var < threshold, laplacian_var
 
+def is_blurred(img_path, model):
+    # load img
+    img = load_image(img_path)
+    # check blurriness
+    pred = model.predict(img)[0]
+    is_blurred = pred > 0.5 
+    print(pred)
+    return is_blurred
+
+def load_image(path_to_img):
+  img = tf.keras.preprocessing.image.load_img(path_to_img, target_size=(224, 224))
+  img = tf.keras.preprocessing.image.img_to_array(img)
+  img /= 255
+  img = np.expand_dims(img, 0)
+  return img
 
 def is_dark(img_path, threshold=50):
     # show image
@@ -25,7 +43,8 @@ def is_dark(img_path, threshold=50):
 
     return brightness < threshold, brightness
 
-def fix_darkness(self, img, threshold = 50):
+def fix_darkness(img_path, threshold = 50):
+    img = cv2.imread(img_path)
     imgYCC = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
 
     intensity = imgYCC[:,:,0]
@@ -39,13 +58,20 @@ def fix_darkness(self, img, threshold = 50):
     is_dark = False
 
     if skewness > 0:
+        print('skewness', skewness)
+        print('y_mean', y_mean)
         # low key
         if y_mean < threshold:
+            
             is_dark = True
             intensity = adaptive_gamma_correction(intensity)
             imgYCC[:,:,0] = intensity
+            print('fixing darkness...')
+
+    img_final = cv2.cvtColor(imgYCC, cv2.COLOR_YCrCb2BGR)
     
-    return is_dark, cv2.cvtColor(imgYCC, cv2.COLOR_YCrCb2BGR)
+
+    return is_dark, img_final
     
 def adaptive_gamma_correction(self, intensity):
 
