@@ -49,6 +49,7 @@ MSG_QUALITY_CHECK_FAILED = "The image sent didn't pass the quality check due to 
 MSG_SEND_FOR_APPLY_FILTER_BASE = 'Which kind of filter you want to apply?'
 MSG_SEND_FOR_APPLY_FILTER = 'Send an image to apply the selected filter'
 MSG_FILTER_DONE = 'Hope you like it!'
+MSG_STYLE_TRANSFER_DONE = 'Hope you like the new style!'
 
 BTN_SEARCH_SIMILAR = 'Retrieve similar products'
 BTN_STYLE_TRANSFER = 'Apply style to a product'
@@ -209,8 +210,13 @@ def do_style_transfer(bot, chat_id, img_style):
     if not img_base:
         # exception
         pass
-
-    bot.sendMessage(chat_id, 'dai implementami!')
+    
+    # TODO: vedere controllo sfondo uniforme (es: scarpa bianca su sfondo bianco fa casini con bilateral=True)
+    # TODO: vedere se usare o no pesi di default
+    img_new = style_transfer.style_transfer(img_base, img_style, maximize_color=True, bilateral=True)
+    cv2.imwrite(img_base, img_new)
+    bot.sendImage(chat_id, img_base, MSG_STYLE_TRANSFER_DONE)
+    # TODO: vedere se settare stato su retrieval
 
 def do_similarity(bot, chat_id, similarity, img_path):
     # faccio cose
@@ -274,10 +280,19 @@ def imageHandler(bot, message, chat_id, img_path):
         # controllo input
         is_blur, is_dark = quality_control_blur_dark(
             img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
-        print(is_dark)
-        # todo aggiungere controllo margini
-        if is_blur:
-            cause = 'blurriness'
+        print('is dark:', is_dark)
+        # check that clothe is bounded and with no disturbed background
+        has_clear_margins = filter_input.has_clear_margins(img_path, margin=1)
+        print('has clear margins:', has_clear_margins)
+        if (is_blur) | (not has_clear_margins):
+            cause = 'boh'
+            if (is_blur) & (not has_clear_margins):
+                cause = 'blurriness and margins not clear'
+            elif is_blur:
+                cause = 'blurriness'
+            elif has_clear_margins:
+                cause = 'margins not clear'
+        
 
             bot.sendMessage(chat_id, MSG_QUALITY_CHECK_FAILED.format(cause),
                             keyboard=[
@@ -292,7 +307,8 @@ def imageHandler(bot, message, chat_id, img_path):
 
             # todo: se non continua controllare che immagine annotata non dia problemi
         else:
-
+            # note style base img
+            db.set(KEY_STYLE_BASE_IMG.format(chat_id), img_path)
             bot.sendMessage(chat_id, MSG_SEND_FOR_STYLE_STYLE)
             db.set(chat_id, STATE_WAIT_STYLE_STYLE)
 

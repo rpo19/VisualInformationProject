@@ -90,17 +90,19 @@ def has_clear_margins(img_path, margin=1):
     img = cv2.bilateralFilter(
         img, 45, 200, 40, cv2.BORDER_REFLECT)
     # extract stripes
-    size = len(img)
+    width = img.shape[1]
+    height = img.shape[0]
     top_border = img[0:margin, :]
-    bottom_border = img[size-margin:size, :]
+    bottom_border = img[height-margin:height, :]
     left_border = img[:, 0:margin]
-    right_border = img[:, size-margin:size]
+    right_border = img[:, width-margin:width]
     # check edges presence in the borders
     top_canny = cv2.Canny(top_border, 100,  150)
     bottom_canny = cv2.Canny(bottom_border, 100,  150)
     left_canny = cv2.Canny(left_border, 100,  150)
     right_canny = cv2.Canny(right_border, 100,  150)
+    
     concatenated = np.concatenate(
-        [top_canny, bottom_canny, np.transpose(left_canny), np.transpose(right_canny)])
+        [top_canny, bottom_canny, np.transpose(left_canny), np.transpose(right_canny)], axis=1)
     # edges pixels are represented as 255 in canny, while the non-edges are 0
     return concatenated.max() == 0
