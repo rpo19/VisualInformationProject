@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import statistics
 
 
 def is_blurred(img_path, threshold=50):
