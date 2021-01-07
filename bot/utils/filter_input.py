@@ -58,11 +58,8 @@ def fix_darkness(img_path, threshold = 50):
     is_dark = False
 
     if skewness > 0:
-        print('skewness', skewness)
-        print('y_mean', y_mean)
         # low key
         if y_mean < threshold:
-            
             is_dark = True
             intensity = adaptive_gamma_correction(intensity)
             imgYCC[:,:,0] = intensity
@@ -73,7 +70,7 @@ def fix_darkness(img_path, threshold = 50):
 
     return is_dark, img_final
     
-def adaptive_gamma_correction(self, intensity):
+def adaptive_gamma_correction(intensity):
 
     mask = cv2.bilateralFilter(intensity, d=2, sigmaColor=7, sigmaSpace=7)
     mask = 255 - mask

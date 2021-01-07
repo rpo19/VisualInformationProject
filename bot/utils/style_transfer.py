@@ -1,6 +1,8 @@
 import pandas as pd
 import cv2
 import numpy as np
+from skimage.segmentation import slic
+from skimage import color
 
 
 
@@ -104,5 +106,12 @@ def get_edge_segmentation(img, bilateral = True, resize = False):
     # prepare mask
     mask2 = cv2.cvtColor(mask2*255, cv2.COLOR_GRAY2BGR)
     return img, mask2
+
+def superpixelate(img):
+    img = cv2.normalize(img, None, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    segments = slic(img, n_segments = 200, sigma = 5)
+    superpixels_image = color.label2rgb(segments, img, kind='avg')
+    superpixels_image = cv2.normalize(superpixels_image, None, alpha = 0, beta = 255, norm_type = cv2.NORM_MINMAX, dtype = cv2.CV_8U)
+    return superpixels_image
 
     
