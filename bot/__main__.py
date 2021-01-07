@@ -12,6 +12,7 @@ import pandas as pd
 import bot.secrets
 import bot.utils.filter_input as filter_input
 import bot.utils.PickleDBExtended
+from bot.utils import style_transfer
 
 unknown_threshold = 0
 blur_threshold = 0.3
