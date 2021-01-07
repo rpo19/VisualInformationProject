@@ -24,6 +24,42 @@ def is_dark(img_path, threshold=50):
 
     return brightness < threshold, brightness
 
+def fix_darkness(self, img, threshold = 50):
+    imgYCC = cv2.cvtColor(img, cv2.COLOR_BGR2YCR_CB)
+
+    intensity = imgYCC[:,:,0]
+
+    y_mean = np.mean(intensity)
+    y_mode = statistics.mode(intensity.ravel())
+    y_std = np.std(intensity)
+
+    skewness = (y_mean - y_mode) / y_std
+
+    is_dark = False
+
+    if skewness > 0:
+        # low key
+        if y_mean < threshold:
+            is_dark = True
+            intensity = adaptive_gamma_correction(intensity)
+            imgYCC[:,:,0] = intensity
+    
+    return is_dark, cv2.cvtColor(imgYCC, cv2.COLOR_YCrCb2BGR)
+    
+def adaptive_gamma_correction(self, intensity):
+
+    mask = cv2.bilateralFilter(intensity, d=2, sigmaColor=7, sigmaSpace=7)
+    mask = 255 - mask
+
+    intensity = intensity.astype(float)
+    mask = mask.astype(float)
+
+    gamma = (2- np.mean(intensity/255))**((128 - mask) / 128)
+    intensity = 255*((intensity/255)**gamma)
+    intensity = np.uint8(intensity)
+
+    return intensity
+
 
 def has_clear_margins(img_path, margin=1):
     img = cv2.imread(img_path)
