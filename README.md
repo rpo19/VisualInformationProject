@@ -7,22 +7,27 @@ The bot expects this directory structure:
 .
 |__data
 |  |__model.h5
-|  |__train_filtered.csv
+|  |__blur_model_4k.h5
+|  |__retrieval_base.csv
 |  |__train
-|  |__1.jpg
-|  |  ...
-|  |__2629.jpg
+|     |__1.jpg
+|     |  ...
+|     |__2629.jpg
 |
 |__bot
 |  |__secrets.py
 |
 |__indexes
    |__color
+   |__hog
+   |__neural_network
+   |__retrieval_modes.ini
 ```
 
 ## Telegram token
 
-Put the Telegram Bot token inside `bot/secrets.py`. Look at the sample `bot/secrets_sample.py`
+Put the Telegram Bot token inside `bot/secrets.py`. Look at the sample
+`bot/secrets_sample.py`
 
 ## Requirements
 
@@ -40,6 +45,21 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 ```
+
+## Dataset images
+Put dataset train images inside `./data/train`
+
+## Retrieval indexes
+Put the indexes inside `./indexes` as shown above otherwise create them starting
+from feature files `./data/color_features.csv  ./data/hog_features.csv
+./data/nn_features.csv`:
+
+once features files are present:
+```
+cd scripts
+python create_indexes.py
+```
+
 
 ## Run
 ```
