@@ -42,7 +42,7 @@ class Retriever():
             t.add_item(i, row.values)    
             i = i+1
         # num_trees = num_classes
-        num_trees = 9
+        num_trees = 500
         t.build(num_trees)
         if t.save(os.path.join(self.indexes_path, retrieval_mode)):
             # save index settings (needed to the future loads)
@@ -73,7 +73,7 @@ class Retriever():
         t = AnnoyIndex(num_features, metric=metric)
         t.load(os.path.join(self.indexes_path, retrieval_mode))
         # retrieve indexes of the n most similar images
-        indexes = t.get_nns_by_vector(img_features, n = n_neighbours, include_distances = include_distances)
+        indexes = t.get_nns_by_vector(img_features, n = n_neighbours, search_k=-1, include_distances = include_distances)
         # unload index
         t.unload()
         return indexes
@@ -87,7 +87,7 @@ class Retriever():
             # get index
             t = self.indexes[retrieval_mode]
             # retrieve indexes of the n most similar images
-            return t.get_nns_by_vector(img_features, n = n_neighbours, include_distances = include_distances)
+            return t.get_nns_by_vector(img_features, n = n_neighbours, search_k=-1, include_distances = include_distances)
 
 
 
