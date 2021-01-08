@@ -21,7 +21,7 @@ def is_blurred(img_path, model):
     # load img
     img = load_image(img_path)
     # check blurriness
-    pred = model.predict(img)[0]
+    pred = model.predict(img)[0][0]
     is_blurred = pred > 0.5 
     print(pred)
     return is_blurred
@@ -85,10 +85,11 @@ def adaptive_gamma_correction(intensity):
     return intensity
 
 
-def has_clear_margins(img_path, margin=1):
+def has_clear_margins(img_path, margin=1, bilateral=True):
     img = cv2.imread(img_path)
-    img = cv2.bilateralFilter(
-        img, 45, 200, 40, cv2.BORDER_REFLECT)
+    if bilateral:
+        img = cv2.bilateralFilter(
+            img, 45, 200, 40, cv2.BORDER_REFLECT)
     # extract stripes
     width = img.shape[1]
     height = img.shape[0]
@@ -122,4 +123,7 @@ def has_uniform_bg(img_path, threshold=10, margin=1):
     # compute std
     std = concatenated.std()
     print('std', std)
-    return std < threshold
+    std_ok = std < threshold
+    # check edge presence in the borders of the image without using filters
+    no_edges = has_clear_margins(img_path,margin,bilateral=False)
+    return std_ok & no_edges

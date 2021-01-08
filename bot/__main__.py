@@ -220,7 +220,8 @@ def do_style_transfer(bot, chat_id, img_style):
     use_bilateral = not filter_input.has_uniform_bg(img_base)
     print('use bilateral:', use_bilateral)
     # TODO: vedere se usare o no pesi di default
-    img_new = style_transfer.style_transfer(img_base, img_style, maximize_color=True, bilateral=use_bilateral)
+    img_new = style_transfer.style_transfer(img_base, img_style, maximize_color=True, 
+                                             bilateral=use_bilateral, color_weight=0.6, details_weight=0.4)
     cv2.imwrite(img_base, img_new)
     bot.sendImage(chat_id, img_base, MSG_STYLE_TRANSFER_DONE)
     return img_base
@@ -313,16 +314,17 @@ def imageHandler(bot, message, chat_id, img_path):
         is_blur, is_dark = quality_control_blur_dark(
             img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
         print('is dark:', is_dark)
+        print('is blur:', is_blur)
         # check that clothe is bounded and with no disturbed background
         has_clear_margins = filter_input.has_clear_margins(img_path, margin=1)
         print('has clear margins:', has_clear_margins)
         if (is_blur) | (not has_clear_margins):
-            cause = 'boh'
+
             if (is_blur) & (not has_clear_margins):
                 cause = 'blurriness and margins not clear'
             elif is_blur:
                 cause = 'blurriness'
-            elif has_clear_margins:
+            elif not has_clear_margins:
                 cause = 'margins not clear'
         
 
