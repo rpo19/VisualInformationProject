@@ -9,7 +9,7 @@ import numpy as np
 from annoy import AnnoyIndex
 import cv2
 from skimage.io import imread
-from bot.utils.color_extractor import ColorFeaturesExtractor
+from bot.utils.color_extractor import ColorFeaturesExtractor, Mode
 from bot.utils.hog_extractor import HogFeaturesExtractor
 from bot.utils.retriever import Retriever
 from bot.utils.utils import get_names_from_indexes
@@ -265,7 +265,7 @@ I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
 
 def do_color_retrieval(img_path):
     img = cv2.imread(img_path)
-    img_features = cfe.extract(img, True)
+    img_features = cfe.extract(img, mode=Mode.CENTER_ONLY)
     indexes = retriever.retrieve(
         img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
     return indexes
