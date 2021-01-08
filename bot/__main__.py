@@ -221,7 +221,8 @@ def do_style_transfer(bot, chat_id, img_style):
     print('use bilateral:', use_bilateral)
     # TODO: vedere se usare o no pesi di default
     img_new = style_transfer.style_transfer(img_base, img_style, maximize_color=True, 
-                                             bilateral=use_bilateral, color_weight=0.6, details_weight=0.4)
+                                             bilateral=use_bilateral, color_weight=0.6, details_weight=0.4,
+                                             crop = False, white_bg = False)
     cv2.imwrite(img_base, img_new)
     bot.sendImage(chat_id, img_base, MSG_STYLE_TRANSFER_DONE)
     return img_base

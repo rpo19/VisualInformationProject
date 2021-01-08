@@ -7,11 +7,12 @@ from skimage import color
 
 
 
-def style_transfer(img_path, color_path, maximize_color=True, bilateral = True, color_weight=0.5, details_weight=0.5):
+def style_transfer(img_path, color_path, maximize_color=True, bilateral = True, color_weight=0.5, details_weight=0.5,
+                    crop = False, white_bg = False):
     # read images
     img = cv2.imread(img_path)
     # TODO: vedere controllo sfondo uniforme -> no bilaterale
-    img, mask = get_edge_segmentation(img, bilateral=bilateral)
+    img, mask = get_edge_segmentation(img, bilateral=bilateral, crop=crop, white_bg=white_bg)
     color = cv2.imread(color_path)
     # get image details
     details = get_image_details(img)
@@ -32,6 +33,9 @@ def style_transfer(img_path, color_path, maximize_color=True, bilateral = True, 
     img_final = cv2.addWeighted(mask_colored, color_weight, details, details_weight, 0, -1)
     # refilter backround
     img_final = cv2.bitwise_and(img_final, mask)
+    # invert background
+    if white_bg:
+        img_final = img_final + (255 - mask)
     return img_final
     
 
@@ -61,7 +65,7 @@ def detect_edges(img):
     combined_edges = cv2.bitwise_or(horizontal, vertical)
     return combined_edges
 
-def get_edge_segmentation(img, bilateral = True, resize = False):
+def get_edge_segmentation(img, bilateral = True, resize = False, crop = False, white_bg = False):
     # resize
     img_resized = img.copy()
     if resize:
@@ -105,6 +109,13 @@ def get_edge_segmentation(img, bilateral = True, resize = False):
     img = img_resized*mask2[:,:,np.newaxis]
     # prepare mask
     mask2 = cv2.cvtColor(mask2*255, cv2.COLOR_GRAY2BGR)
+    # crop image with the region of interest
+    if crop:
+        img = img[y_min:y_max, x_min:x_max]
+        mask2 = mask2[y_min:y_max, x_min:x_max]
+    # invert background color
+    if white_bg:
+        img = img + (255 - mask2)
     return img, mask2
 
 def superpixelate(img):
