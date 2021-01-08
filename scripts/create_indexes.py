@@ -20,6 +20,8 @@ def create_index(features_path, index_dir_path, retrieval_mode, metric):
     # create index
     retriever.create_index(df_features, retrieval_mode=retrieval_mode, metric = metric)
 
+if not os.path.isdir(os.path.join(basedir, 'indexes')):
+    os.mkdir(os.path.join(basedir, 'indexes'))
 
 # neural network features
 print('creating neural network index...')
@@ -28,10 +30,10 @@ create_index(os.path.join(basedir, 'data/nn_features.csv'),
 
 # color features
 print('creating color features index...')
-create_index(os.path.join(basedir, 'data/nn_features.csv'),
+create_index(os.path.join(basedir, 'data/color_features.csv'),
     os.path.join(basedir, 'indexes/'), 'color', 'euclidean')
 
 # HOG features
 print('creating hog features index...')
-create_index(os.path.join(basedir, 'data/nn_features.csv'),
+create_index(os.path.join(basedir, 'data/hog_features.csv'),
     os.path.join(basedir, 'indexes/'), 'hog', 'euclidean')
