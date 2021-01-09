@@ -40,22 +40,22 @@ def style_transfer(img_path, color_path, maximize_color=True, bilateral = True, 
     
 
 def get_image_details(img):
-        # convert to grayscale
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        # apply gaussian blut
-        img = cv2.GaussianBlur(img, (3,3), 0)
-        # inverted image
-        inv_image = 255 - img
-        # detect edges from both the blurred image and its negative
-        edges_blurred = detect_edges(img)
-        edges_inverted = detect_edges(inv_image)
-        # combine edges
-        img_edges = cv2.addWeighted(edges_blurred, 1, edges_inverted, 1, 0)
-        # invert back image
-        img = 255 - img_edges    
-        # convert back to bgr
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        return img
+    # convert to grayscale
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # apply gaussian blut
+    img = cv2.GaussianBlur(img, (3,3), 0)
+    # inverted image
+    inv_image = 255 - img
+    # detect edges from both the blurred image and its negative
+    edges_blurred = detect_edges(img)
+    edges_inverted = detect_edges(inv_image)
+    # combine edges
+    img_edges = cv2.addWeighted(edges_blurred, 1, edges_inverted, 1, 0)
+    # invert back image
+    img = 255 - img_edges    
+    # convert back to bgr
+    img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    return img
 
 
 def detect_edges(img):
