@@ -58,6 +58,17 @@ class Bot:
         else:
             print("Immagine non trovata: " + image_path)
 
+    def sendAnimation(self, chat_id, animation_path, caption):
+        #http://docs.python-requests.org/en/latest/user/quickstart/
+        if os.path.isfile(animation_path):
+            print("sto inviando l'animazione: " + animation_path)
+            url = self.base_url + 'sendAnimation'
+            files = {'animation': open(animation_path, 'rb')}
+            data  = {'caption':caption, "chat_id": chat_id}
+            r = requests.post(url, files=files, data=data)
+        else:
+            print("Animazione non trovata: " + animation_path)
+
     def sendMediaGroup(self, chat_id, photoPathList, caption):
         try:
             print("sto inviando le immagini...", photoPathList)
