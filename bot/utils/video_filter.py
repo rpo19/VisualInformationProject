@@ -52,7 +52,6 @@ class GifMaker():
 	
 	def __save_gif(self, path, filename, frames):
 		save_path = '/'.join(path) + '/' + filename + '.gif'
-		print(save_path)
 		frames[0].save(save_path,
                save_all=True, format='GIF', append_images=frames[1:],
 			   optimize=True, quality=20, duration=1, loop=0)
@@ -62,7 +61,7 @@ class GifMaker():
 		read_path = base_path + '/' + filename + '.gif'
 		save_path = base_path + '/' + filename + '.mp4'
 		clip = mp.VideoFileClip(read_path)
-		clip.write_videofile('prova.mp4')
+		clip.write_videofile(save_path)
 
 
 if __name__ == "__main__":
