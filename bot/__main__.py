@@ -18,6 +18,10 @@ import bot.secrets
 import bot.utils.filter_input as filter_input
 import bot.utils.PickleDBExtended
 from bot.utils import style_transfer
+
+from tensorflow.keras.preprocessing import image
+from tensorflow.keras.applications.resnet50 import ResNet50
+from tensorflow.keras.applications.resnet50 import preprocess_input
 # enums
 from bot.enums.state import State
 from bot.enums.message import Message
@@ -27,7 +31,7 @@ from bot.enums.key import Key
 
 UNKNOWN_THRESHOLD = 0
 MIN_CONFIDENCE = 0.5
-BLUR_THRESHOLD = 0.3
+BLUR_THRESHOLD = 0.6
 DARK_THRESHOLD = 40
 
 base_dir = '.'
@@ -77,7 +81,8 @@ def textHandler(bot, message, chat_id, text):
         if text == Button.BTN_SEARCH_SIMILAR:
             bot.sendMessage(chat_id, Message.MSG_CHOOSE_SIMILARITY,
                             keyboard=[
-                                [Button.BTN_SIMIL_COLOR, Button.BTN_SIMIL_SHAPE, Button.BTN_SIMIL_NEURAL],
+                                [Button.BTN_SIMIL_COLOR, Button.BTN_SIMIL_SHAPE],
+                                [Button.BTN_SIMIL_NEURAL_EFFICIENT, Button.BTN_SIMIL_NEURAL_RESNET],
                                 [Button.BTN_STOP]
                             ])
             db.set(chat_id, State.STATE_CHOOSE_SIMILARITY)
@@ -99,7 +104,8 @@ def textHandler(bot, message, chat_id, text):
             bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
 
     elif state == State.STATE_CHOOSE_SIMILARITY:
-        if text not in [Button.BTN_SIMIL_COLOR, Button.BTN_SIMIL_SHAPE, Button.BTN_SIMIL_NEURAL]:
+        if text not in [Button.BTN_SIMIL_COLOR, Button.BTN_SIMIL_SHAPE,
+                        Button.BTN_SIMIL_NEURAL_EFFICIENT, Button.BTN_SIMIL_NEURAL_RESNET]:
             # exception todo
             pass
 
@@ -137,7 +143,8 @@ def textHandler(bot, message, chat_id, text):
                 similarity = db.get(Key.KEY_SIMILARITY.format(chat_id)) or None
                 print('similarity', similarity)
 
-                if similarity not in [Button.BTN_SIMIL_COLOR, Button.BTN_SIMIL_SHAPE, Button.BTN_SIMIL_NEURAL]:
+                if similarity not in [Button.BTN_SIMIL_COLOR, Button.BTN_SIMIL_SHAPE, 
+                                        Button.BTN_SIMIL_NEURAL_EFFICIENT, Button.BTN_SIMIL_NEURAL_RESNET]:
                     # exception todo
                     pass
                 
@@ -226,8 +233,10 @@ chosen similarity: {similarity}
             indexes = do_color_retrieval(img_path)
         elif similarity == Button.BTN_SIMIL_SHAPE:
             indexes = do_shape_retrieval(img_path)
-        elif similarity == Button.BTN_SIMIL_NEURAL:
-            indexes = do_neural_network_retrieval(pred[1][0])
+        elif similarity == Button.BTN_SIMIL_NEURAL_EFFICIENT:
+            indexes = do_efficientnet_retrieval(pred[1][0])
+        elif similarity == Button.BTN_SIMIL_NEURAL_RESNET:
+            indexes = do_resnet_retrieval(img_path)
 
         names = get_names_from_indexes(indexes, names_df)
 
@@ -248,9 +257,17 @@ def do_color_retrieval(img_path):
         img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
     return indexes
 
-def do_neural_network_retrieval(img_features):
+def do_efficientnet_retrieval(img_features):
     indexes = retriever.retrieve(
         img_features, retrieval_mode='neural_network', n_neighbours=5, include_distances=False)
+    return indexes
+
+def do_resnet_retrieval(img_path):
+    img = loadimg_resnet(img_path)
+    img_features = resnet_model.predict(img)[0]
+
+    indexes = retriever.retrieve(
+        img_features, retrieval_mode='neural_network_resnet', n_neighbours=5, include_distances=False)
     return indexes
 
 def do_shape_retrieval(img_path):
@@ -332,13 +349,19 @@ def imageHandler(bot, message, chat_id, img_path):
                 bot.sendMessage(chat_id, Message.MSG_SEND_FOR_STYLE_STYLE)
                 db.set(chat_id, State.STATE_WAIT_STYLE_STYLE)
         else:
-            bot.sendMessage(chat_id, Message.MSG_UNKNOWN)    
+            bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
+            db.set(chat_id, State.STATE_TOSTART)
             bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+
     elif state == State.STATE_WAIT_STYLE_STYLE:
         # apply new style
         img_new = do_style_transfer(bot, chat_id, img_path)
+
+        X = loadimg(img_new)
+        img_features = model.predict(X)[1][0]
+
         # retrieve similar products
-        indexes = do_neural_network_retrieval(img_new)
+        indexes = do_efficientnet_retrieval(img_features)
         names = get_names_from_indexes(indexes, names_df)
         names = [os.path.join(img_dir, name) for name in names]
         bot.sendMediaGroup(chat_id, names, Message.MSG_RETRIEVAL_NEW_STYLE_DONE)
@@ -350,7 +373,8 @@ def imageHandler(bot, message, chat_id, img_path):
         similarity = db.get(Key.KEY_SIMILARITY.format(chat_id)) or None
         print('similarity', similarity)
 
-        if similarity not in [Button.BTN_SIMIL_COLOR, Button.BTN_SIMIL_SHAPE, Button.BTN_SIMIL_NEURAL]:
+        if similarity not in [Button.BTN_SIMIL_COLOR, Button.BTN_SIMIL_SHAPE, 
+                                Button.BTN_SIMIL_NEURAL_EFFICIENT, Button.BTN_SIMIL_NEURAL_RESNET]:
             # exception todo
             pass
 
@@ -391,6 +415,12 @@ def imageHandler(bot, message, chat_id, img_path):
         do_filter(bot, chat_id, selected_filter, img_path)
         db.set(chat_id, State.STATE_TOSTART)
 
+def loadimg_resnet(img_path):
+    img = image.load_img(img_path, target_size=(224, 224))
+    img_data = image.img_to_array(img)
+    img_data = np.expand_dims(img_data, axis=0)
+    img_data = preprocess_input(img_data)
+    return img_data
 
 def loadimg(img_path):
 
@@ -426,6 +456,7 @@ if __name__ == "__main__":
 
     model = tf.keras.models.load_model(model_path)
     blur_model = tf.keras.models.load_model(blur_model_path)
+    resnet_model = ResNet50(weights='imagenet', include_top=False, pooling='max')
     classes = ['bag',
                'elegant_jacket',
                'high_heels_shoe',
