@@ -26,8 +26,9 @@ from bot.enums.key import Key
 
 
 UNKNOWN_THRESHOLD = 0
+MIN_CONFIDENCE = 0.5
 BLUR_THRESHOLD = 0.3
-DARK_THRESHOLD = 30
+DARK_THRESHOLD = 40
 
 base_dir = '.'
 
@@ -38,7 +39,7 @@ img_dir = os.path.join(data_dir, 'train')
 names_df_path = os.path.join(data_dir, 'retrieval_base.csv')
 
 model_path = os.path.join(data_dir, 'model.h5')
-blur_model_path = os.path.join(data_dir, 'blur_model_4k.h5')
+blur_model_path = os.path.join(data_dir, 'blur_model.h5')
 
 db_path = os.path.join(data_dir, 'state.db')
 
@@ -174,10 +175,8 @@ def do_style_transfer(bot, chat_id, img_style):
         # exception
         pass
     
-    # TODO: vedere se ok controllo sfondo uniforme (es: scarpa bianca su sfondo bianco fa casini con bilateral=True)
     use_bilateral = not filter_input.has_uniform_bg(img_base)
     print('use bilateral:', use_bilateral)
-    # TODO: vedere se usare o no pesi di default
     img_new = style_transfer.style_transfer(img_base, img_style, maximize_color=True, 
                                              bilateral=use_bilateral, color_weight=0.6, details_weight=0.4,
                                              crop = False, white_bg = False)
@@ -201,25 +200,46 @@ chosen similarity: {similarity}
 
     detected_class = detected_class.upper()
 
-    bot.sendMessage(chat_id, f"""
-I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
-""")
+    
 
     # retrieve similar with the selected modality
-    if similarity == Button.BTN_SIMIL_COLOR:
-        indexes = do_color_retrieval(img_path)
-    elif similarity == Button.BTN_SIMIL_SHAPE:
-        indexes = do_shape_retrieval(img_path)
-    elif similarity == Button.BTN_SIMIL_NEURAL:
-        indexes = do_neural_network_retrieval(img_path)
+    if detected_class != 'UNKNOWN':
 
-    names = get_names_from_indexes(indexes, names_df)
+        detected_class_1, detected_class_2, confidence_lvl_1, confidence_lvl_2 = get_top_2(pred[0], classes)
+        top_2_diff = abs(confidence_lvl_1 - confidence_lvl_2)
 
-    names = [os.path.join(img_dir, name) for name in names]
+        if (confidence_lvl < MIN_CONFIDENCE) and (top_2_diff <= 0.1):
+            detected_class_1 = detected_class_1.upper()
+            detected_class_2 = detected_class_2.upper()
+            bot.sendMessage(chat_id, f"""
+            I'm uncertain between ' **{detected_class_1}** and **{detected_class_2}** with a confidence of {confidence_lvl_1} and {confidence_lvl_2}!
+            """)
+        elif (confidence_lvl < MIN_CONFIDENCE) and (top_2_diff > 0.1):
+            bot.sendMessage(chat_id, Message.MSG_UNKNOWN)    
+        else:
+            bot.sendMessage(chat_id, f"""
+            I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
+            """)
 
-    bot.sendMediaGroup(chat_id, names, Message.MSG_RETRIEVAL__DONE)
+
+        if similarity == Button.BTN_SIMIL_COLOR:
+            indexes = do_color_retrieval(img_path)
+        elif similarity == Button.BTN_SIMIL_SHAPE:
+            indexes = do_shape_retrieval(img_path)
+        elif similarity == Button.BTN_SIMIL_NEURAL:
+            indexes = do_neural_network_retrieval(pred[1][0])
+
+        names = get_names_from_indexes(indexes, names_df)
+
+        names = [os.path.join(img_dir, name) for name in names]
+
+        bot.sendMediaGroup(chat_id, names, Message.MSG_RETRIEVAL__DONE)
+    else:
+        bot.sendMessage(chat_id, Message.MSG_UNKNOWN)    
 
     bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+
+
 
 def do_color_retrieval(img_path):
     img = cv2.imread(img_path)
@@ -228,9 +248,7 @@ def do_color_retrieval(img_path):
         img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
     return indexes
 
-def do_neural_network_retrieval(img_path):
-    img = loadimg(img_path)
-    img_features = model.predict(img)[1][0]
+def do_neural_network_retrieval(img_features):
     indexes = retriever.retrieve(
         img_features, retrieval_mode='neural_network', n_neighbours=5, include_distances=False)
     return indexes
@@ -268,43 +286,54 @@ def imageHandler(bot, message, chat_id, img_path):
     if state == State.STATE_WAIT_STYLE_BASE:
         # note img path
         db.set(Key.KEY_STYLE_BASE_IMG.format(chat_id), img_path)
+        X = loadimg(img_path)
+        pred = model.predict(X)
 
-        # controllo input
-        is_blur, is_dark = quality_control_blur_dark(
-            img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
-        print('is dark:', is_dark)
-        print('is blur:', is_blur)
-        # check that clothe is bounded and with no disturbed background
-        has_clear_margins = filter_input.has_clear_margins(img_path, margin=1)
-        print('has clear margins:', has_clear_margins)
-        if (is_blur) | (not has_clear_margins):
+        detected_class, confidence_lvl = softmax2class(
+            pred[0], classes, threshold=UNKNOWN_THRESHOLD)
 
-            if (is_blur) & (not has_clear_margins):
-                cause = 'blurriness and margins not clear'
-            elif is_blur:
-                cause = 'blurriness'
-            elif not has_clear_margins:
-                cause = 'margins not clear'
-        
+        detected_class = detected_class.upper()
+        print('detected_class', detected_class)
+        print('confidence_lvl', confidence_lvl)
+        if (detected_class != 'UNKNOWN') and (confidence_lvl > MIN_CONFIDENCE):
+            # controllo input
+            is_blur, is_dark = quality_control_blur_dark(
+                img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
+            print('is dark:', is_dark)
+            print('is blur:', is_blur)
+            # check that clothe is bounded and with no disturbed background
+            has_clear_margins = filter_input.has_clear_margins(img_path, margin=1)
+            print('has clear margins:', has_clear_margins)
+            if (is_blur) or (not has_clear_margins):
 
-            bot.sendMessage(chat_id, Message.MSG_QUALITY_CHECK_FAILED.format(cause),
-                            keyboard=[
-                [Button.BTN_YES, Button.BTN_NO],
-                [Button.BTN_STOP]
-            ])
-
-            # annoto stato precedente
-            db.set(Key.KEY_QUALITY_CONTINUE_PREVSTATE.format(chat_id), State.STATE_WAIT_STYLE_BASE)
+                if (is_blur) and (not has_clear_margins):
+                    cause = 'blurriness and margins not clear'
+                elif is_blur:
+                    cause = 'blurriness'
+                elif not has_clear_margins:
+                    cause = 'margins not clear'
             
-            db.set(chat_id, State.STATE_QUALITY_ASK_CONTINUE)
 
-            # todo: se non continua controllare che immagine annotata non dia problemi
+                bot.sendMessage(chat_id, Message.MSG_QUALITY_CHECK_FAILED.format(cause),
+                                keyboard=[
+                    [Button.BTN_YES, Button.BTN_NO],
+                    [Button.BTN_STOP]
+                ])
+
+                # annoto stato precedente
+                db.set(Key.KEY_QUALITY_CONTINUE_PREVSTATE.format(chat_id), State.STATE_WAIT_STYLE_BASE)
+                
+                db.set(chat_id, State.STATE_QUALITY_ASK_CONTINUE)
+
+                # todo: se non continua controllare che immagine annotata non dia problemi
+            else:
+                # note style base img
+                db.set(Key.KEY_STYLE_BASE_IMG.format(chat_id), img_path)
+                bot.sendMessage(chat_id, Message.MSG_SEND_FOR_STYLE_STYLE)
+                db.set(chat_id, State.STATE_WAIT_STYLE_STYLE)
         else:
-            # note style base img
-            db.set(Key.KEY_STYLE_BASE_IMG.format(chat_id), img_path)
-            bot.sendMessage(chat_id, Message.MSG_SEND_FOR_STYLE_STYLE)
-            db.set(chat_id, State.STATE_WAIT_STYLE_STYLE)
-
+            bot.sendMessage(chat_id, Message.MSG_UNKNOWN)    
+            bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
     elif state == State.STATE_WAIT_STYLE_STYLE:
         # apply new style
         img_new = do_style_transfer(bot, chat_id, img_path)
@@ -329,7 +358,6 @@ def imageHandler(bot, message, chat_id, img_path):
         is_blur, is_dark = quality_control_blur_dark(
             img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
 
-        # todo aggiungere controllo margini
         if is_blur:
             cause = 'blurriness'
             bot.sendMessage(chat_id, Message.MSG_QUALITY_CHECK_FAILED.format(cause),
@@ -375,14 +403,23 @@ def loadimg(img_path):
 
     return np.array([imarr])
 
+def get_top_2(softmax, classes):
+    confidence_lvl_1 = round(softmax.max(), 5)
+    argmax = softmax.argmax()
+    detected_class_1 = classes[argmax]
+    softmax[0][argmax] = -1
+    confidence_lvl_2 = round(softmax.max(), 5)
+    argmax = softmax.argmax()
+    detected_class_2 = classes[argmax]
+    return detected_class_1, detected_class_2, confidence_lvl_1, confidence_lvl_2
 
 def softmax2class(softmax, classes, threshold=0.5, unknown='unknown'):
     max = softmax.max()
     if max >= threshold:
         argmax = softmax.argmax()
-        return classes[argmax], max
+        return classes[argmax], round(max, 5)
     else:
-        return unknown, max
+        return unknown, round(max, 5)
 
 
 if __name__ == "__main__":

@@ -17,3 +17,4 @@ class Message(str, Enum):
     MSG_STYLE_TRANSFER_DONE = 'Hope you like the new style!'
     MSG_RETRIEVAL_NEW_STYLE_DONE = "Here some similar clothes to the one generated!"
     MSG_RETRIEVAL__DONE = "Here some similar clothes"
+    MSG_UNKNOWN = "I cannot recognize the image, sorry!"

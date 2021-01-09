@@ -23,7 +23,7 @@ def is_blurred(img_path, model):
     # check blurriness
     pred = model.predict(img)[0][0]
     is_blurred = pred > 0.5 
-    print(pred)
+    print('is_blur prediction', pred)
     return is_blurred
 
 def load_image(path_to_img):
@@ -60,17 +60,21 @@ def fix_darkness(img_path, threshold = 50):
     if skewness > 0:
         # low key
         if y_mean < threshold:
-            is_dark = True
-            intensity = adaptive_gamma_correction(intensity)
-            imgYCC[:,:,0] = intensity
             print('fixing darkness...')
+            is_dark = True
+            intensity = adaptive_gamma_correction(intensity, threshold)
+            imgYCC[:,:,0] = intensity
+            
 
     img_final = cv2.cvtColor(imgYCC, cv2.COLOR_YCrCb2BGR)
     
 
     return is_dark, img_final
     
-def adaptive_gamma_correction(intensity):
+def adaptive_gamma_correction(intensity, threshold):
+    # cale values
+    threshold /= 255
+    y_mean = np.mean(intensity/255)
 
     mask = cv2.bilateralFilter(intensity, d=2, sigmaColor=7, sigmaSpace=7)
     mask = 255 - mask
@@ -78,7 +82,10 @@ def adaptive_gamma_correction(intensity):
     intensity = intensity.astype(float)
     mask = mask.astype(float)
 
-    gamma = (2- np.mean(intensity/255))**((128 - mask) / 128)
+    # 2- y_mean/threshold to regulate the correction
+    base = 2- y_mean/threshold*0.8
+    gamma = (base)**((128 - mask) / 128)
+    print('gamma base', base)
     intensity = 255*((intensity/255)**gamma)
     intensity = np.uint8(intensity)
 
@@ -126,4 +133,4 @@ def has_uniform_bg(img_path, threshold=10, margin=1):
     std_ok = std < threshold
     # check edge presence in the borders of the image without using filters
     no_edges = has_clear_margins(img_path,margin,bilateral=False)
-    return std_ok & no_edges
+    return std_ok and no_edges

@@ -105,7 +105,7 @@ def get_edge_segmentation(img, bilateral = True, resize = False, crop = False, w
     fgdModel = np.zeros((1,65),np.float64)
     # segmentation
     cv2.grabCut(img_resized,mask,rect,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_RECT)
-    mask2 = np.where(((mask==cv2.GC_PR_BGD)|(mask==cv2.GC_BGD)),0,1).astype('uint8')
+    mask2 = np.where(((mask==cv2.GC_PR_BGD)or(mask==cv2.GC_BGD)),0,1).astype('uint8')
     img = img_resized*mask2[:,:,np.newaxis]
     # prepare mask
     mask2 = cv2.cvtColor(mask2*255, cv2.COLOR_GRAY2BGR)
