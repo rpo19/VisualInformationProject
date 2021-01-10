@@ -23,7 +23,7 @@ class LBPFeaturesExtractor():
             # get mask for center region
             rect_mask = self.__getCenterRect(centerX, centerY, w, h)
             # extract features from center region
-            features = self.__LBPhist(img, rect_mask, self.n_points, self.radius)
+            features = self.__LBPhist(img, self.n_points, self.radius, rect_mask)
         else:
             # extract features from the whole image
             features = self.__LBPhist(img, n_points=self.n_points, radius=self.radius)
@@ -41,7 +41,7 @@ class LBPFeaturesExtractor():
         mask[top_left[0]: bottom_right[0], bottom_right[1]:top_left[1]] = 255
         return mask
     
-    def __LBPhist(self, img, mask, n_points, radius):
+    def __LBPhist(self, img, n_points, radius, mask=None):
         # if a mask is given filter out only the needed part
         if mask is not None:
             img = cv2.multiply(img, mask)
@@ -64,5 +64,5 @@ if __name__ == "__main__":
     features_extractor = LBPFeaturesExtractor(24, 7, 0.6)
     features = features_extractor.extract(img, center_only=True)
     print('Number of features extracted: ', len(features))
-    
+
  
