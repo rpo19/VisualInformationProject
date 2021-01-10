@@ -1,5 +1,4 @@
 import cv2
-from style_transfer import superpixelate
 import numpy as np
 from skimage.segmentation import slic
 from skimage import color
@@ -7,6 +6,7 @@ from skimage.measure import regionprops
 from PIL import Image, ImageDraw
 import moviepy.editor as mp
 import random
+import os
 
 
 class GifMaker():
@@ -40,10 +40,10 @@ class GifMaker():
 		if n_segments > 0:
 			frames.append(Image.fromarray(a))
 
-		filename_with_extension = img_path.split('/')[-1]
-		path = img_path.split('/')[0:-1]
+		path_splitted = os.path.split(img_path)
+		filename_with_extension = path_splitted[1]
+		path = path_splitted[0]
 		filename = filename_with_extension.split('.')[0]
-
 		
 		self.__save_gif(path, filename, frames)
 		self.__to_mp4(path, filename)
@@ -51,15 +51,15 @@ class GifMaker():
 
 	
 	def __save_gif(self, path, filename, frames):
-		save_path = '/'.join(path) + '/' + filename + '.gif'
+		filename = filename + '.gif'
+		save_path = os.path.join(path, filename)
 		frames[0].save(save_path,
                save_all=True, format='GIF', append_images=frames[1:],
 			   optimize=True, quality=20, duration=1, loop=0)
 	
 	def __to_mp4(self, path, filename):
-		base_path = '/'.join(path)
-		read_path = base_path + '/' + filename + '.gif'
-		save_path = base_path + '/' + filename + '.mp4'
+		read_path = os.path.join(path, filename + '.gif')
+		save_path = os.path.join(path, filename + '.mp4')
 		clip = mp.VideoFileClip(read_path)
 		clip.write_videofile(save_path)
 

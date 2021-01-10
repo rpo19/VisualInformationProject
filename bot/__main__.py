@@ -18,6 +18,7 @@ import bot.secrets
 import bot.utils.filter_input as filter_input
 import bot.utils.PickleDBExtended
 from bot.utils import style_transfer
+from bot.utils.gif_maker import GifMaker
 
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.resnet50 import ResNet50
@@ -70,7 +71,7 @@ def textHandler(bot, message, chat_id, text):
             bot.sendMessage(chat_id, Message.MSG_PROMPT_ACTION,
                             keyboard=[
                                 [Button.BTN_SEARCH_SIMILAR, Button.BTN_STYLE_TRANSFER],
-                                [Button.BTN_APPLY_FILTER],
+                                [Button.BTN_APPLY_FILTER, Button.BTN_GENERATE_GIF],
                                 [Button.BTN_STOP]
                             ])
             db.set(chat_id, State.STATE_WAIT_ACTION)
@@ -98,6 +99,10 @@ def textHandler(bot, message, chat_id, text):
                                 [Button.BTN_STOP]
                             ])
             db.set(chat_id, State.STATE_CHOOSE_FILTER)
+        
+        elif text == Button.BTN_GENERATE_GIF:
+            bot.sendMessage(chat_id, Message.MSG_SEND_FOR_GIF)
+            db.set(chat_id, State.STATE_WAIT_FOR_IMAGE_GIF)
 
         else:
             db.set(chat_id, State.STATE_TOSTART)
@@ -414,6 +419,14 @@ def imageHandler(bot, message, chat_id, img_path):
         
         do_filter(bot, chat_id, selected_filter, img_path)
         db.set(chat_id, State.STATE_TOSTART)
+    
+    elif state == State.STATE_WAIT_FOR_IMAGE_GIF:
+        do_gif(bot, chat_id, img_path)
+        db.set(chat_id, State.STATE_TOSTART)
+        bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+        
+
+
 
 def loadimg_resnet(img_path):
     img = image.load_img(img_path, target_size=(224, 224))
@@ -451,6 +464,18 @@ def softmax2class(softmax, classes, threshold=0.5, unknown='unknown'):
     else:
         return unknown, round(max, 5)
 
+def do_gif(bot, chat_id, img_path):
+    print('Generating gif...')
+
+    gifMaker.to_mosaic_gif(img_path)
+    path_splitted = os.path.split(img_path)
+    filename_with_extension = path_splitted[1]
+    filename = filename_with_extension.split('.')[0]
+
+    gif_path = os.path.join(path_splitted[0], filename + '.mp4')
+    bot.sendAnimation(chat_id, gif_path, Message.MSG_GIF_DONE)
+
+
 
 if __name__ == "__main__":
 
@@ -474,6 +499,8 @@ if __name__ == "__main__":
     hfe = HogFeaturesExtractor()
 
     retriever = Retriever(index_dir, load_all=True)
+
+    gifMaker = GifMaker()
 
     names_df = pd.read_csv(names_df_path)
 

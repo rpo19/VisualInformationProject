@@ -14,6 +14,7 @@ class Button(str, Enum):
     BTN_SIMIL_SHAPE = 'by Shape'
     BTN_SIMIL_NEURAL_EFFICIENT = 'by EfficientNet'
     BTN_SIMIL_NEURAL_RESNET = 'by ResNet50'
+    BTN_GENERATE_GIF = 'Generate gif'
     BTN_STOP = '/stop'
     BTN_START = '/start'
     BTN_YES = 'Yes'
