@@ -12,3 +12,5 @@ annoy
 configparser
 pickledb
 scikit-image
+Pillow
+moviepy
