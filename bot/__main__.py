@@ -229,7 +229,9 @@ chosen similarity: {similarity}
             I'm uncertain between ' **{detected_class_1}** and **{detected_class_2}** with a confidence of {confidence_lvl_1} and {confidence_lvl_2}!
             """)
         elif (confidence_lvl < MIN_CONFIDENCE) and (top_2_diff > 0.1):
-            bot.sendMessage(chat_id, Message.MSG_UNKNOWN)    
+            bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
+            bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+            return
         else:
             bot.sendMessage(chat_id, f"""
             I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
