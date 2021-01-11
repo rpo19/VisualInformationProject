@@ -323,55 +323,77 @@ def imageHandler(bot, message, chat_id, img_path):
     if state == State.STATE_WAIT_STYLE_BASE:
         # note img path
         db.set(Key.KEY_STYLE_BASE_IMG.format(chat_id), img_path)
-        X = loadimg(img_path)
-        pred = model.predict(X)
 
-        detected_class, confidence_lvl = softmax2class(
-            pred[0], classes, threshold=UNKNOWN_THRESHOLD)
+        # controllo input
+        is_blur, is_dark = quality_control_blur_dark(
+            img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
 
-        detected_class = detected_class.upper()
-        print('detected_class', detected_class)
-        print('confidence_lvl', confidence_lvl)
-        if (detected_class != 'UNKNOWN') and (confidence_lvl > MIN_CONFIDENCE):
-            # controllo input
-            is_blur, is_dark = quality_control_blur_dark(
-                img_path, BLUR_THRESHOLD, DARK_THRESHOLD)
-            print('is dark:', is_dark)
-            print('is blur:', is_blur)
-            # check that clothe is bounded and with no disturbed background
-            has_clear_margins = filter_input.has_clear_margins(img_path, margin=1)
-            print('has clear margins:', has_clear_margins)
-            if (is_blur) or (not has_clear_margins):
+# check that clothe is bounded and with no disturbed background
+        has_clear_margins = filter_input.has_clear_margins(img_path, margin=1)
+        print('has clear margins:', has_clear_margins)
+        if (is_blur) or (not has_clear_margins):
 
-                if (is_blur) and (not has_clear_margins):
-                    cause = 'blurriness and margins not clear'
-                elif is_blur:
-                    cause = 'blurriness'
-                elif not has_clear_margins:
-                    cause = 'margins not clear'
+            if (is_blur) and (not has_clear_margins):
+                cause = 'blurriness and margins not clear'
+            elif is_blur:
+                cause = 'blurriness'
+            elif not has_clear_margins:
+                cause = 'margins not clear'
+        
+
+            bot.sendMessage(chat_id, Message.MSG_QUALITY_CHECK_FAILED.format(cause),
+                            keyboard=[
+                [Button.BTN_YES, Button.BTN_NO],
+                [Button.BTN_STOP]
+            ])
+
+            # annoto stato precedente
+            db.set(Key.KEY_QUALITY_CONTINUE_PREVSTATE.format(chat_id), State.STATE_WAIT_STYLE_BASE)
             
+            db.set(chat_id, State.STATE_QUALITY_ASK_CONTINUE)
 
-                bot.sendMessage(chat_id, Message.MSG_QUALITY_CHECK_FAILED.format(cause),
-                                keyboard=[
-                    [Button.BTN_YES, Button.BTN_NO],
-                    [Button.BTN_STOP]
-                ])
+        else:
+            X = loadimg(img_path)
+            pred = model.predict(X)
 
-                # annoto stato precedente
-                db.set(Key.KEY_QUALITY_CONTINUE_PREVSTATE.format(chat_id), State.STATE_WAIT_STYLE_BASE)
-                
-                db.set(chat_id, State.STATE_QUALITY_ASK_CONTINUE)
+            detected_class, confidence_lvl = softmax2class(
+                pred[0], classes, threshold=UNKNOWN_THRESHOLD)
 
-                # todo: se non continua controllare che immagine annotata non dia problemi
-            else:
-                # note style base img
+            detected_class = detected_class.upper()
+            print('detected_class', detected_class)
+            print('confidence_lvl', confidence_lvl)
+
+            # retrieve similar with the selected modality
+            if detected_class != 'UNKNOWN':
+
+                detected_class_1, detected_class_2, confidence_lvl_1, confidence_lvl_2 = get_top_2(pred[0], classes)
+                top_2_diff = abs(confidence_lvl_1 - confidence_lvl_2)
+
+                if (confidence_lvl < MIN_CONFIDENCE) and (top_2_diff <= 0.1):
+                    detected_class_1 = detected_class_1.upper()
+                    detected_class_2 = detected_class_2.upper()
+                    bot.sendMessage(chat_id, f"""
+                    I'm uncertain between ' **{detected_class_1}** and **{detected_class_2}** with a confidence of {confidence_lvl_1} and {confidence_lvl_2}!
+                    """)
+                elif (confidence_lvl < MIN_CONFIDENCE) and (top_2_diff > 0.1):
+                    bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
+                    bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+                    db.set(chat_id, State.STATE_TOSTART)
+                    return
+                else:
+                    bot.sendMessage(chat_id, f"""
+                    I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
+                    """)
+
                 db.set(Key.KEY_STYLE_BASE_IMG.format(chat_id), img_path)
                 bot.sendMessage(chat_id, Message.MSG_SEND_FOR_STYLE_STYLE)
                 db.set(chat_id, State.STATE_WAIT_STYLE_STYLE)
-        else:
-            bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
-            db.set(chat_id, State.STATE_TOSTART)
-            bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+
+            else:
+                bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
+                bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+                db.set(chat_id, State.STATE_TOSTART)
+            
 
     elif state == State.STATE_WAIT_STYLE_STYLE:
         # apply new style
