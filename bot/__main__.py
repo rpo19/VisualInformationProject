@@ -29,6 +29,8 @@ from bot.enums.message import Message
 from bot.enums.button import Button
 from bot.enums.key import Key
 
+import pickle
+
 
 UNKNOWN_THRESHOLD = 0
 MIN_CONFIDENCE = 0.5
@@ -257,29 +259,40 @@ chosen similarity: {similarity}
 
 def do_color_retrieval(img_path):
     img = cv2.imread(img_path)
-    img_features = cfe.extract(img, mode=Mode.CENTER_ONLY)
+    img_features = cfe.extract(img, mode=Mode.CENTER_SUBREGIONS)
     indexes = retriever.retrieve(
-        img_features, retrieval_mode='color', n_neighbours=5, include_distances=False)
+        img_features, retrieval_mode='color_center_subregions', n_neighbours=5, include_distances=False)
     return indexes
 
 def do_efficientnet_retrieval(img_features):
+
+    # apply pca efficientnet
+    img_features = pca_nn.transform([img_features])[0]
+
     indexes = retriever.retrieve(
-        img_features, retrieval_mode='neural_network', n_neighbours=5, include_distances=False)
+        img_features, retrieval_mode='neural_network_pca', n_neighbours=5, include_distances=False)
     return indexes
 
 def do_resnet_retrieval(img_path):
     img = loadimg_resnet(img_path)
     img_features = resnet_model.predict(img)[0]
 
+    # apply pca resnet
+    img_features = pca_nn_resnet.transform([img_features])[0]
+
     indexes = retriever.retrieve(
-        img_features, retrieval_mode='neural_network_resnet', n_neighbours=5, include_distances=False)
+        img_features, retrieval_mode='neural_network_resnet_pca', n_neighbours=5, include_distances=False)
     return indexes
 
 def do_shape_retrieval(img_path):
     img = imread(img_path)
     img_features = hfe.extract(img)
+
+    # apply pca hog
+    img_features = pca_hog.transform([img_features])[0]
+
     indexes = retriever.retrieve(
-        img_features, retrieval_mode='hog', n_neighbours=5, include_distances=False)
+        img_features, retrieval_mode='hog_pca', n_neighbours=5, include_distances=False)
     return indexes
 
 def do_filter(bot, chat_id, filter, img_path):
@@ -482,6 +495,16 @@ if __name__ == "__main__":
     model = tf.keras.models.load_model(model_path)
     blur_model = tf.keras.models.load_model(blur_model_path)
     resnet_model = ResNet50(weights='imagenet', include_top=False, pooling='max')
+    
+    with open(os.path.join(data_dir, 'pca_hog.pckl'), 'rb') as handle:
+        pca_hog = pickle.load(handle)
+
+    with open(os.path.join(data_dir, 'pca_nn.pckl'), 'rb') as handle:
+        pca_nn = pickle.load(handle)
+
+    with open(os.path.join(data_dir, 'pca_nn_resnet.pckl'), 'rb') as handle:
+        pca_nn_resnet = pickle.load(handle)
+
     classes = ['bag',
                'elegant_jacket',
                'high_heels_shoe',
@@ -494,7 +517,7 @@ if __name__ == "__main__":
                'unknown'
                ]
 
-    cfe = ColorFeaturesExtractor((24, 26, 3), 0.6)
+    cfe = ColorFeaturesExtractor((16, 18, 2), 0.6)
     
     hfe = HogFeaturesExtractor()
 
