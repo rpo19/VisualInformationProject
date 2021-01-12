@@ -8,3 +8,5 @@ indexes
 data
 test_imgs
 **/.vscode
+evaluation_imgs
+evaluation_imgs_test
