@@ -168,6 +168,9 @@ def textHandler(bot, message, chat_id, text):
                         """)
                     elif (confidence_lvl < MIN_CONFIDENCE) and (top_2_diff > 0.1):
                         bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
+                        bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+                        db.set(chat_id, State.STATE_TOSTART)
+                        return
                     else:
                         bot.sendMessage(chat_id, f"""
                         I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
@@ -175,6 +178,9 @@ def textHandler(bot, message, chat_id, text):
 
                 else:
                     bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
+                    bot.sendMessage(chat_id, Message.MSG_START, keyboard=[[Button.BTN_START]])
+                    db.set(chat_id, State.STATE_TOSTART)
+                    return
 
 
                 bot.sendMessage(chat_id, Message.MSG_SEND_FOR_STYLE_STYLE)
