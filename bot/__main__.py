@@ -137,6 +137,46 @@ def textHandler(bot, message, chat_id, text):
             prevstate = db.get(Key.KEY_QUALITY_CONTINUE_PREVSTATE.format(chat_id))
 
             if prevstate == State.STATE_WAIT_STYLE_BASE:
+
+                img_path = db.get(Key.KEY_STYLE_BASE_IMG.format(chat_id)) or None
+                
+                if not img_path:
+                    # exception
+                    pass
+
+                X = loadimg(img_path)
+                pred = model.predict(X)
+
+                detected_class, confidence_lvl = softmax2class(
+                    pred[0], classes, threshold=UNKNOWN_THRESHOLD)
+
+                detected_class = detected_class.upper()
+                print('detected_class', detected_class)
+                print('confidence_lvl', confidence_lvl)
+
+                # retrieve similar with the selected modality
+                if detected_class != 'UNKNOWN':
+
+                    detected_class_1, detected_class_2, confidence_lvl_1, confidence_lvl_2 = get_top_2(pred[0], classes)
+                    top_2_diff = abs(confidence_lvl_1 - confidence_lvl_2)
+
+                    if (confidence_lvl < MIN_CONFIDENCE) and (top_2_diff <= 0.1):
+                        detected_class_1 = detected_class_1.upper()
+                        detected_class_2 = detected_class_2.upper()
+                        bot.sendMessage(chat_id, f"""
+                        I'm uncertain between ' **{detected_class_1}** and **{detected_class_2}** with a confidence of {confidence_lvl_1} and {confidence_lvl_2}!
+                        """)
+                    elif (confidence_lvl < MIN_CONFIDENCE) and (top_2_diff > 0.1):
+                        bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
+                    else:
+                        bot.sendMessage(chat_id, f"""
+                        I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
+                        """)
+
+                else:
+                    bot.sendMessage(chat_id, Message.MSG_UNKNOWN)
+
+
                 bot.sendMessage(chat_id, Message.MSG_SEND_FOR_STYLE_STYLE)
                 db.set(chat_id, State.STATE_WAIT_STYLE_STYLE)
 
@@ -385,7 +425,6 @@ def imageHandler(bot, message, chat_id, img_path):
                     I bet this is a **{detected_class}** with a confidence of {confidence_lvl}!
                     """)
 
-                db.set(Key.KEY_STYLE_BASE_IMG.format(chat_id), img_path)
                 bot.sendMessage(chat_id, Message.MSG_SEND_FOR_STYLE_STYLE)
                 db.set(chat_id, State.STATE_WAIT_STYLE_STYLE)
 
