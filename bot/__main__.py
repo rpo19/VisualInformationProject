@@ -292,7 +292,9 @@ chosen similarity: {similarity}
             indexes = do_efficientnet_retrieval(pred[1][0])
         elif similarity == Button.BTN_SIMIL_NEURAL_RESNET:
             indexes = do_resnet_retrieval(img_path)
-
+        else:
+            indexes = do_efficientnet_retrieval(pred[1][0])
+            
         names = get_names_from_indexes(indexes, names_df)
 
         names = [os.path.join(img_dir, name) for name in names]
