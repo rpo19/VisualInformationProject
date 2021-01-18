@@ -1,3 +1,11 @@
+# Dataset
+
+Download dataset from https://products-10k.github.io/
+
+Paper at https://arxiv.org/abs/2008.10545
+
+Models and miscellaneous files from `r.pozzi's GDrive/VIPM/data.7z`.
+
 # Bot
 
 ## Directory structure
@@ -38,6 +46,8 @@ Supposing you prefer to create a virtualenv here are the steps to create a virtu
 python -m venv venv
 
 # Linux
+# you may need to install some packages; e.g.
+# apt-get install ffmpeg libsm6 libxext6
 source venv/bin/activate
 
 # Windows
