@@ -4,7 +4,7 @@ Download dataset from https://products-10k.github.io/
 
 Paper at https://arxiv.org/abs/2008.10545
 
-Models and miscellaneous files from `r.pozzi's GDrive/VIPM/data.7z`.
+Models and miscellaneous files from the archive `data.7z` you can find [here](https://drive.google.com/drive/folders/1hV-yZ98X1isiRYvwhKSkEviUUUZsPT0i?usp=sharing) and verify with `data.7z.md5`.
 
 # Bot
 
